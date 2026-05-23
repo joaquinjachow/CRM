@@ -1,0 +1,142 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* Light mode - warm wood theme */
+:root {
+  --background: #F5F0E8;
+  --foreground: #2D2418;
+  --card: #FFFFFF;
+  --card-foreground: #2D2418;
+  --popover: #FFFFFF;
+  --popover-foreground: #2D2418;
+  --primary: #98694C;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EBC095;
+  --secondary-foreground: #2D2418;
+  --muted: #E8E0D4;
+  --muted-foreground: #6B5B4F;
+  --accent: #EBC095;
+  --accent-foreground: #2D2418;
+  --destructive: #B84242;
+  --destructive-foreground: #FFFFFF;
+  --border: #D4C4B0;
+  --input: #E1D5BE;
+  --ring: #98694C;
+  --chart-1: #98694C;
+  --chart-2: #EBC095;
+  --chart-3: #6B8E6B;
+  --chart-4: #8B7355;
+  --chart-5: #C4956A;
+  --radius: 0.625rem;
+  --sidebar: #98694C;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #EBC095;
+  --sidebar-primary-foreground: #2D2418;
+  --sidebar-accent: rgba(255, 255, 255, 0.15);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: rgba(255, 255, 255, 0.2);
+  --sidebar-ring: #EBC095;
+  --success: #4A7C59;
+  --success-foreground: #FFFFFF;
+  --warning: #C9A227;
+  --warning-foreground: #2D2418;
+}
+
+/* Dark mode */
+.dark {
+  --background: #1A1410;
+  --foreground: #F5F0E8;
+  --card: #252017;
+  --card-foreground: #F5F0E8;
+  --popover: #252017;
+  --popover-foreground: #F5F0E8;
+  --primary: #EBC095;
+  --primary-foreground: #1A1410;
+  --secondary: #3D3228;
+  --secondary-foreground: #F5F0E8;
+  --muted: #3D3228;
+  --muted-foreground: #A89A8A;
+  --accent: #98694C;
+  --accent-foreground: #FFFFFF;
+  --destructive: #D35555;
+  --destructive-foreground: #FFFFFF;
+  --border: #4A3F33;
+  --input: #3D3228;
+  --ring: #EBC095;
+  --chart-1: #EBC095;
+  --chart-2: #98694C;
+  --chart-3: #7CAA7C;
+  --chart-4: #A89080;
+  --chart-5: #D4A574;
+  --sidebar: #3D2E22;
+  --sidebar-foreground: #F5F0E8;
+  --sidebar-primary: #EBC095;
+  --sidebar-primary-foreground: #1A1410;
+  --sidebar-accent: rgba(235, 192, 149, 0.15);
+  --sidebar-accent-foreground: #F5F0E8;
+  --sidebar-border: #5A483A;
+  --sidebar-ring: #EBC095;
+  --success: #6AAF7A;
+  --success-foreground: #1A1410;
+  --warning: #E0B838;
+  --warning-foreground: #1A1410;
+}
+
+@theme inline {
+  --font-sans: 'Geist', 'Geist Fallback';
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-wood: #98694C;
+  --color-wood-light: #EBC095;
+  --color-wood-input: #E1D5BE;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
