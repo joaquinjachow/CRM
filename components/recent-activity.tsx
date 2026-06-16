@@ -1,8 +1,7 @@
 'use client'
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Truck, Package, DollarSign, Users, AlertCircle } from 'lucide-react'
+import { Truck, DollarSign, Users, AlertCircle } from 'lucide-react'
 
 interface Activity {
   id: number

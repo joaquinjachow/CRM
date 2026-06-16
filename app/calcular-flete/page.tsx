@@ -1,20 +1,11 @@
 'use client'
-
 import { useState, useEffect } from 'react'
-import { Sidebar } from '@/components/sidebar'
+import { PageShell } from '@/components/page-shell'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Calculator, Settings, CheckCircle, XCircle, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
@@ -37,6 +28,35 @@ interface FreightCheckInputs {
   driverPercentage: number
   profitPercentage: number
 }
+
+interface NumberFieldConfig<T extends string> {
+  id: T
+  label: string
+  placeholder: string
+}
+
+const fixedCostFields: NumberFieldConfig<keyof FixedCostInputs>[] = [
+  { id: 'insuranceCost', label: 'Costo de Seguro ($)', placeholder: 'Ej: 5000' },
+  { id: 'maintenanceCost', label: 'Costo de Mantenimiento ($)', placeholder: 'Ej: 3000' },
+  { id: 'officeCost', label: 'Costo de Oficina ($)', placeholder: 'Ej: 15000' },
+  { id: 'silviSalary', label: 'Sueldo Silvi ($)', placeholder: 'Ej: 450000' },
+  { id: 'satelliteCost', label: 'Costo Satelital ($)', placeholder: 'Ej: 12000' },
+]
+
+const freightMainFields: NumberFieldConfig<'freightPrice' | 'kilometers'>[] = [
+  { id: 'freightPrice', label: 'Precio que ofrecen ($)', placeholder: 'Ej: 150000' },
+  { id: 'kilometers', label: 'Kilómetros del viaje', placeholder: 'Ej: 800' },
+]
+
+const freightCostFields: NumberFieldConfig<'fuelCost' | 'tollCost'>[] = [
+  { id: 'fuelCost', label: 'Costo de Gasoil ($)', placeholder: 'Ej: 25000' },
+  { id: 'tollCost', label: 'Costo de Peajes ($)', placeholder: 'Ej: 8000' },
+]
+
+const freightPercentageFields: NumberFieldConfig<'driverPercentage' | 'profitPercentage'>[] = [
+  { id: 'driverPercentage', label: 'Porcentaje del Chofer (%)', placeholder: 'Ej: 30' },
+  { id: 'profitPercentage', label: 'Porcentaje de Ganancia (%)', placeholder: 'Ej: 15' },
+]
 
 export default function CalcularFletePage() {
   const [fixedCostInputs, setFixedCostInputs] = useState<FixedCostInputs>({
@@ -85,17 +105,13 @@ export default function CalcularFletePage() {
       officeCost +
       silviSalary +
       satelliteCost
-
     const costPerKilometer = totalFixedCosts / REFERENCE_KM
-
     setCalculatedCostPerKm(costPerKilometer)
     setShowCostResult(true)
   }
-
   const checkConvenience = () => {
     setShowConvenienceResult(true)
   }
-
   const baseTripCost = costPerKm * freightInputs.kilometers
   const baseBeforePercentages =
     baseTripCost + freightInputs.tollCost + freightInputs.fuelCost
@@ -130,11 +146,7 @@ export default function CalcularFletePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar />
-
-      <main className="lg:pl-64">
-        <div className="p-4 pt-16 lg:p-8 lg:pt-8">
+    <PageShell>
           <div className="mb-8">
             <Link
               href="/"
@@ -152,7 +164,6 @@ export default function CalcularFletePage() {
                   Calculá el costo por kilómetro con costos fijos y evaluá si un flete es rentable.
                 </p>
               </div>
-
               <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <DialogTrigger asChild>
                   <Button
@@ -193,7 +204,6 @@ export default function CalcularFletePage() {
               </Dialog>
             </div>
           </div>
-
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Izquierda: costos fijos → costo por km */}
             <Card className="border-border bg-card">
@@ -207,66 +217,22 @@ export default function CalcularFletePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="insuranceCost">Costo de Seguro ($)</Label>
-                  <Input
-                    id="insuranceCost"
-                    type="number"
-                    value={fixedCostInputs.insuranceCost || ''}
-                    onChange={(e) => updateFixedCost('insuranceCost', e.target.value)}
-                    placeholder="Ej: 5000"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="maintenanceCost">Costo de Mantenimiento ($)</Label>
-                  <Input
-                    id="maintenanceCost"
-                    type="number"
-                    value={fixedCostInputs.maintenanceCost || ''}
-                    onChange={(e) => updateFixedCost('maintenanceCost', e.target.value)}
-                    placeholder="Ej: 3000"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="officeCost">Costo de Oficina ($)</Label>
-                  <Input
-                    id="officeCost"
-                    type="number"
-                    value={fixedCostInputs.officeCost || ''}
-                    onChange={(e) => updateFixedCost('officeCost', e.target.value)}
-                    placeholder="Ej: 15000"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="silviSalary">Sueldo Silvi ($)</Label>
-                  <Input
-                    id="silviSalary"
-                    type="number"
-                    value={fixedCostInputs.silviSalary || ''}
-                    onChange={(e) => updateFixedCost('silviSalary', e.target.value)}
-                    placeholder="Ej: 450000"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="satelliteCost">Costo Satelital ($)</Label>
-                  <Input
-                    id="satelliteCost"
-                    type="number"
-                    value={fixedCostInputs.satelliteCost || ''}
-                    onChange={(e) => updateFixedCost('satelliteCost', e.target.value)}
-                    placeholder="Ej: 12000"
-                  />
-                </div>
-
+                {fixedCostFields.map((field) => (
+                  <div key={field.id} className="space-y-2">
+                    <Label htmlFor={field.id}>{field.label}</Label>
+                    <Input
+                      id={field.id}
+                      type="number"
+                      value={fixedCostInputs[field.id] || ''}
+                      onChange={(e) => updateFixedCost(field.id, e.target.value)}
+                      placeholder={field.placeholder}
+                    />
+                  </div>
+                ))}
                 <Button onClick={calculateCostPerKm} className="w-full">
                   <Calculator className="mr-2 h-4 w-4" />
                   Calcular Costo por Km
                 </Button>
-
                 {showCostResult && (
                   <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-4">
                     <p className="text-sm text-muted-foreground">Costo por kilómetro calculado:</p>
@@ -286,7 +252,6 @@ export default function CalcularFletePage() {
                 )}
               </CardContent>
             </Card>
-
             {/* Derecha: evaluación del flete */}
             <Card className="border-border bg-card">
               <CardHeader>
@@ -304,80 +269,50 @@ export default function CalcularFletePage() {
                     ⚠️ No tenés configurado un costo por km. Calculalo primero a la izquierda o editá el valor manualmente.
                   </div>
                 )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="freightPrice">Precio que ofrecen ($)</Label>
-                  <Input
-                    id="freightPrice"
-                    type="number"
-                    value={freightInputs.freightPrice || ''}
-                    onChange={(e) => updateFreightInput('freightPrice', e.target.value)}
-                    placeholder="Ej: 150000"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="kilometers">Kilómetros del viaje</Label>
-                  <Input
-                    id="kilometers"
-                    type="number"
-                    value={freightInputs.kilometers || ''}
-                    onChange={(e) => updateFreightInput('kilometers', e.target.value)}
-                    placeholder="Ej: 800"
-                  />
-                </div>
-
+                {freightMainFields.map((field) => (
+                  <div key={field.id} className="space-y-2">
+                    <Label htmlFor={field.id}>{field.label}</Label>
+                    <Input
+                      id={field.id}
+                      type="number"
+                      value={freightInputs[field.id] || ''}
+                      onChange={(e) => updateFreightInput(field.id, e.target.value)}
+                      placeholder={field.placeholder}
+                    />
+                  </div>
+                ))}
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="fuelCost">Costo de Gasoil ($)</Label>
-                    <Input
-                      id="fuelCost"
-                      type="number"
-                      value={freightInputs.fuelCost || ''}
-                      onChange={(e) => updateFreightInput('fuelCost', e.target.value)}
-                      placeholder="Ej: 25000"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tollCost">Costo de Peajes ($)</Label>
-                    <Input
-                      id="tollCost"
-                      type="number"
-                      value={freightInputs.tollCost || ''}
-                      onChange={(e) => updateFreightInput('tollCost', e.target.value)}
-                      placeholder="Ej: 8000"
-                    />
-                  </div>
+                  {freightCostFields.map((field) => (
+                    <div key={field.id} className="space-y-2">
+                      <Label htmlFor={field.id}>{field.label}</Label>
+                      <Input
+                        id={field.id}
+                        type="number"
+                        value={freightInputs[field.id] || ''}
+                        onChange={(e) => updateFreightInput(field.id, e.target.value)}
+                        placeholder={field.placeholder}
+                      />
+                    </div>
+                  ))}
                 </div>
-
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="driverPercentage">Porcentaje del Chofer (%)</Label>
-                    <Input
-                      id="driverPercentage"
-                      type="number"
-                      value={freightInputs.driverPercentage || ''}
-                      onChange={(e) => updateFreightInput('driverPercentage', e.target.value)}
-                      placeholder="Ej: 30"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="profitPercentage">Porcentaje de Ganancia (%)</Label>
-                    <Input
-                      id="profitPercentage"
-                      type="number"
-                      value={freightInputs.profitPercentage || ''}
-                      onChange={(e) => updateFreightInput('profitPercentage', e.target.value)}
-                      placeholder="Ej: 15"
-                    />
-                  </div>
+                  {freightPercentageFields.map((field) => (
+                    <div key={field.id} className="space-y-2">
+                      <Label htmlFor={field.id}>{field.label}</Label>
+                      <Input
+                        id={field.id}
+                        type="number"
+                        value={freightInputs[field.id] || ''}
+                        onChange={(e) => updateFreightInput(field.id, e.target.value)}
+                        placeholder={field.placeholder}
+                      />
+                    </div>
+                  ))}
                 </div>
-
                 <div className="rounded-lg bg-secondary p-4">
                   <p className="text-sm text-muted-foreground">Costo por km actual:</p>
                   <p className="text-xl font-bold text-foreground">${costPerKm.toFixed(2)}</p>
                 </div>
-
                 <Button
                   onClick={checkConvenience}
                   className="w-full"
@@ -386,7 +321,6 @@ export default function CalcularFletePage() {
                   <Calculator className="mr-2 h-4 w-4" />
                   Verificar si Conviene
                 </Button>
-
                 {showConvenienceResult &&
                   freightInputs.freightPrice > 0 &&
                   freightInputs.kilometers > 0 && (
@@ -409,7 +343,6 @@ export default function CalcularFletePage() {
                           {isConvenient ? '¡Sí conviene!' : 'No conviene'}
                         </p>
                       </div>
-
                       <div className="mt-4 space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">
@@ -477,8 +410,6 @@ export default function CalcularFletePage() {
               </CardContent>
             </Card>
           </div>
-        </div>
-      </main>
-    </div>
+    </PageShell>
   )
 }

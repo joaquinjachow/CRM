@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
+import { StockProvider } from '@/lib/stock-context'
 import './globals.css'
 
 const geistSans = Geist({ 
@@ -16,6 +17,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'CRM - Transporte y Madera',
   description: 'Sistema de gestión para empresa de transporte y madera',
+  icons: {
+    icon: [{ url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' }],
+  },
 }
 
 export default function RootLayout({
@@ -32,7 +36,9 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          {children}
+          <StockProvider>
+            {children}
+          </StockProvider>
         </ThemeProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

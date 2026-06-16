@@ -1,16 +1,6 @@
 'use client'
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  TrendingUp,
-  TrendingDown,
-  Users,
-  UserMinus,
-  DollarSign,
-  Target,
-  Truck,
-  Package,
-} from 'lucide-react'
+import { TrendingUp, TrendingDown, Users, UserMinus, DollarSign, Target, Truck, Package } from 'lucide-react'
 
 interface StatCardProps {
   title: string

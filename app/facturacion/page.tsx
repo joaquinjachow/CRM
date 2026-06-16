@@ -1,278 +1,43 @@
 'use client'
-
-import { useState } from 'react'
-import { Sidebar } from '@/components/sidebar'
+import { Suspense, useState, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { PageShell } from '@/components/page-shell'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Plus, Download, Trash2, Eye, FileText } from 'lucide-react'
+import { ArrowLeft, Plus, Download, Trash2, Eye, FileText, Check, ClipboardList } from 'lucide-react'
+import { useStock } from '@/lib/stock-context'
+import {
+  productosDisponibles,
+  productoPorCodigo,
+  codigoPorProducto,
+  formatMoney,
+  formatDate,
+  calcularTotalesLinea,
+  IVA_RATE,
+  type Factura,
+  type ItemFacturaLinea,
+} from '@/lib/stock-data'
 import * as XLSX from 'xlsx'
-
-// Productos predefinidos (código 1 al 12 en este orden)
-const productosDisponibles = [
-  'Pino 1x2',
-  'Pino 2x2',
-  'Pino 3x3',
-  'Pino 3x6',
-  'Pino 4x4',
-  'Machimbre',
-  'Zócalos',
-  'Madera Dura',
-  'Tirantes',
-  'Tablas de Eucalipto',
-  'Vigas',
-  'Deck',
-] as const
-
-const productoPorCodigo = (codigo: number): string | undefined => {
-  if (codigo >= 1 && codigo <= productosDisponibles.length) {
-    return productosDisponibles[codigo - 1]
-  }
-  return undefined
-}
-
-const codigoPorProducto = (producto: string): number | undefined => {
-  const index = productosDisponibles.indexOf(producto as (typeof productosDisponibles)[number])
-  return index >= 0 ? index + 1 : undefined
-}
-
-const IVA_RATE = 0.21
-
-const calcularTotalesLinea = (cantidadXPaquete: number, precioLista: number) => {
-  const totalSinIva = cantidadXPaquete * precioLista
-  const iva = totalSinIva * IVA_RATE
-  return {
-    totalSinIva,
-    iva,
-    totalConIva: totalSinIva + iva,
-  }
-}
-
-const formatMoney = (value: number) =>
-  value.toLocaleString('es-AR', { maximumFractionDigits: 2 })
-
-interface ItemFacturaLinea {
-  codigo: number
-  producto: string
-  medidas: string
-  cantidadXPaquete: number
-  precioLista: number
-  totalSinIva: number
-  totalConIva: number
-}
-
-interface FacturaHistorial {
-  id: string
-  fecha: string
-  cliente: string
-  items: ItemFacturaLinea[]
-  totalSinIva: number
-  totalConIva: number
-  estado: 'pagada' | 'pendiente' | 'vencida'
-}
-
-// Facturas de ejemplo (misma estructura que factura nueva)
-const facturasAnteriores: FacturaHistorial[] = [
-  {
-    id: 'FAC-001',
-    fecha: '2025-03-10',
-    cliente: 'Maderera San José',
-    items: [
-      {
-        codigo: 2,
-        producto: 'Pino 2x2',
-        medidas: '1 1/2 x 4',
-        cantidadXPaquete: 150,
-        precioLista: 2500,
-        totalSinIva: 375000,
-        totalConIva: 453750,
-      },
-      {
-        codigo: 6,
-        producto: 'Machimbre',
-        medidas: '1 x 6',
-        cantidadXPaquete: 80,
-        precioLista: 3200,
-        totalSinIva: 256000,
-        totalConIva: 309760,
-      },
-      {
-        codigo: 7,
-        producto: 'Zócalos',
-        medidas: '3/4 x 3',
-        cantidadXPaquete: 45,
-        precioLista: 1800,
-        totalSinIva: 81000,
-        totalConIva: 98010,
-      },
-    ],
-    totalSinIva: 712000,
-    totalConIva: 861520,
-    estado: 'pagada',
-  },
-  {
-    id: 'FAC-002',
-    fecha: '2025-03-14',
-    cliente: 'Constructora Norte',
-    items: [
-      {
-        codigo: 4,
-        producto: 'Pino 3x6',
-        medidas: '3 x 6',
-        cantidadXPaquete: 200,
-        precioLista: 4500,
-        totalSinIva: 900000,
-        totalConIva: 1089000,
-      },
-      {
-        codigo: 9,
-        producto: 'Tirantes',
-        medidas: '2 x 8',
-        cantidadXPaquete: 120,
-        precioLista: 3800,
-        totalSinIva: 456000,
-        totalConIva: 551760,
-      },
-    ],
-    totalSinIva: 1356000,
-    totalConIva: 1640760,
-    estado: 'pendiente',
-  },
-  {
-    id: 'FAC-003',
-    fecha: '2025-03-18',
-    cliente: 'Carpintería López',
-    items: [
-      {
-        codigo: 8,
-        producto: 'Madera Dura',
-        medidas: '2 x 4',
-        cantidadXPaquete: 60,
-        precioLista: 8500,
-        totalSinIva: 510000,
-        totalConIva: 617100,
-      },
-      {
-        codigo: 1,
-        producto: 'Pino 1x2',
-        medidas: '1 x 2',
-        cantidadXPaquete: 100,
-        precioLista: 1800,
-        totalSinIva: 180000,
-        totalConIva: 217800,
-      },
-      {
-        codigo: 12,
-        producto: 'Deck',
-        medidas: '1 x 4',
-        cantidadXPaquete: 35,
-        precioLista: 6200,
-        totalSinIva: 217000,
-        totalConIva: 262570,
-      },
-    ],
-    totalSinIva: 907000,
-    totalConIva: 1097470,
-    estado: 'pagada',
-  },
-  {
-    id: 'FAC-004',
-    fecha: '2025-03-22',
-    cliente: 'Muebles Artesanales',
-    items: [
-      {
-        codigo: 5,
-        producto: 'Pino 4x4',
-        medidas: '4 x 4',
-        cantidadXPaquete: 80,
-        precioLista: 3600,
-        totalSinIva: 288000,
-        totalConIva: 348480,
-      },
-      {
-        codigo: 10,
-        producto: 'Tablas de Eucalipto',
-        medidas: '1 x 8',
-        cantidadXPaquete: 50,
-        precioLista: 4200,
-        totalSinIva: 210000,
-        totalConIva: 254100,
-      },
-    ],
-    totalSinIva: 498000,
-    totalConIva: 602580,
-    estado: 'vencida',
-  },
-  {
-    id: 'FAC-005',
-    fecha: '2025-04-02',
-    cliente: 'Depósito Central',
-    items: [
-      {
-        codigo: 11,
-        producto: 'Vigas',
-        medidas: '6 x 8',
-        cantidadXPaquete: 40,
-        precioLista: 12000,
-        totalSinIva: 480000,
-        totalConIva: 580800,
-      },
-      {
-        codigo: 3,
-        producto: 'Pino 3x3',
-        medidas: '3 x 3',
-        cantidadXPaquete: 180,
-        precioLista: 3200,
-        totalSinIva: 576000,
-        totalConIva: 696960,
-      },
-      {
-        codigo: 6,
-        producto: 'Machimbre',
-        medidas: '1 1/2 x 6',
-        cantidadXPaquete: 200,
-        precioLista: 3200,
-        totalSinIva: 640000,
-        totalConIva: 774400,
-      },
-    ],
-    totalSinIva: 1696000,
-    totalConIva: 2052160,
-    estado: 'pagada',
-  },
-]
 
 interface ItemFactura extends ItemFacturaLinea {
   id: string
 }
 
-type Factura = FacturaHistorial
+function FacturacionPageContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const desdePedidoId = searchParams.get('desde_pedido')
 
-export default function FacturacionPage() {
+  const { facturas, crearFactura, obtenerPedido } = useStock()
+
   const [vista, setVista] = useState<'lista' | 'nueva'>('lista')
+  const [cliente, setCliente] = useState('')
   const [items, setItems] = useState<ItemFactura[]>([])
   const [codigo, setCodigo] = useState('')
   const [productoSeleccionado, setProductoSeleccionado] = useState('')
@@ -280,6 +45,32 @@ export default function FacturacionPage() {
   const [medidas, setMedidas] = useState('')
   const [precioLista, setPrecioLista] = useState('')
   const [facturaDetalle, setFacturaDetalle] = useState<Factura | null>(null)
+  const [pedidoPrellenado, setPedidoPrellenado] = useState(false)
+
+  useEffect(() => {
+    if (desdePedidoId && !pedidoPrellenado) {
+      const pedido = obtenerPedido(desdePedidoId)
+      if (pedido) {
+        setCliente(pedido.cliente)
+        const itemsFactura: ItemFactura[] = pedido.items.map((item) => {
+          const { totalSinIva, totalConIva } = calcularTotalesLinea(item.cantidad, item.precioLista)
+          return {
+            id: crypto.randomUUID(),
+            codigo: item.codigo,
+            producto: item.producto,
+            medidas: item.medidas,
+            cantidadXPaquete: item.cantidad,
+            precioLista: item.precioLista,
+            totalSinIva,
+            totalConIva,
+          }
+        })
+        setItems(itemsFactura)
+        setVista('nueva')
+        setPedidoPrellenado(true)
+      }
+    }
+  }, [desdePedidoId, obtenerPedido, pedidoPrellenado])
 
   const cantidadXPaqueteNum = parseFloat(cantidadXPaquete) || 0
   const precioListaNum = parseFloat(precioLista) || 0
@@ -305,7 +96,7 @@ export default function FacturacionPage() {
     }
   }
 
-  const limpiarFormulario = () => {
+  const limpiarCamposProducto = () => {
     setCodigo('')
     setProductoSeleccionado('')
     setCantidadXPaquete('')
@@ -313,19 +104,24 @@ export default function FacturacionPage() {
     setPrecioLista('')
   }
 
+  const volverALista = () => {
+    setVista('lista')
+    setCliente('')
+    setItems([])
+    limpiarCamposProducto()
+    setPedidoPrellenado(false)
+    if (desdePedidoId) {
+      router.replace('/facturacion')
+    }
+  }
+
   const agregarItem = () => {
     if (!productoSeleccionado || !cantidadXPaquete || !medidas.trim() || !precioLista) return
-
     const codigoNum = codigoPorProducto(productoSeleccionado) ?? parseInt(codigo, 10)
     if (!codigoNum || codigoNum < 1 || codigoNum > 12) return
-
-    const { totalSinIva, totalConIva } = calcularTotalesLinea(
-      cantidadXPaqueteNum,
-      precioListaNum,
-    )
-
+    const { totalSinIva, totalConIva } = calcularTotalesLinea(cantidadXPaqueteNum, precioListaNum)
     const nuevoItem: ItemFactura = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       codigo: codigoNum,
       producto: productoSeleccionado,
       medidas: medidas.trim(),
@@ -334,22 +130,27 @@ export default function FacturacionPage() {
       totalSinIva,
       totalConIva,
     }
-
-    setItems([...items, nuevoItem])
-    limpiarFormulario()
+    setItems((prev) => [...prev, nuevoItem])
+    limpiarCamposProducto()
   }
 
   const eliminarItem = (id: string) => {
-    setItems(items.filter((item) => item.id !== id))
+    setItems((prev) => prev.filter((item) => item.id !== id))
   }
 
   const totalFacturaSinIva = items.reduce((sum, item) => sum + item.totalSinIva, 0)
   const totalFacturaConIva = items.reduce((sum, item) => sum + item.totalConIva, 0)
   const totalIvaFactura = totalFacturaConIva - totalFacturaSinIva
 
+  const confirmarFactura = () => {
+    if (!cliente.trim() || items.length === 0) return
+    const itemsSinId: ItemFacturaLinea[] = items.map(({ id: _id, ...rest }) => rest)
+    crearFactura(cliente.trim(), itemsSinId, desdePedidoId ?? undefined)
+    volverALista()
+  }
+
   const exportarExcel = () => {
     if (items.length === 0) return
-
     const datosExport = items.map((item) => ({
       Código: item.codigo,
       Producto: item.producto,
@@ -360,7 +161,6 @@ export default function FacturacionPage() {
       IVA: item.totalConIva - item.totalSinIva,
       'Total con IVA': item.totalConIva,
     }))
-
     datosExport.push({
       Código: 0,
       Producto: 'TOTAL',
@@ -371,22 +171,13 @@ export default function FacturacionPage() {
       IVA: totalIvaFactura,
       'Total con IVA': totalFacturaConIva,
     })
-
     const ws = XLSX.utils.json_to_sheet(datosExport)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Factura')
-
     ws['!cols'] = [
-      { wch: 8 },
-      { wch: 22 },
-      { wch: 14 },
-      { wch: 16 },
-      { wch: 14 },
-      { wch: 15 },
-      { wch: 12 },
-      { wch: 15 },
+      { wch: 8 }, { wch: 22 }, { wch: 14 }, { wch: 16 },
+      { wch: 14 }, { wch: 15 }, { wch: 12 }, { wch: 15 },
     ]
-
     XLSX.writeFile(wb, `factura_${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
@@ -404,11 +195,7 @@ export default function FacturacionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar />
-
-      <main className="lg:pl-64">
-        <div className="p-4 pt-16 lg:p-8 lg:pt-8">
+    <PageShell>
           {/* Header */}
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
@@ -416,7 +203,7 @@ export default function FacturacionPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setVista('lista')}
+                  onClick={volverALista}
                   className="text-muted-foreground hover:text-foreground"
                 >
                   <ArrowLeft className="h-5 w-5" />
@@ -424,16 +211,21 @@ export default function FacturacionPage() {
               )}
               <div>
                 <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
-                  {vista === 'lista' ? 'Facturación' : 'Nueva Factura'}
+                  {vista === 'lista'
+                    ? 'Facturación'
+                    : desdePedidoId
+                      ? `Factura desde Pedido ${desdePedidoId}`
+                      : 'Nueva Factura'}
                 </h1>
                 <p className="text-muted-foreground">
                   {vista === 'lista'
                     ? 'Gestiona y consulta tus facturas'
-                    : 'Crea una nueva factura agregando productos'}
+                    : desdePedidoId
+                      ? 'Revisá los datos del pedido, editá lo que necesites y confirmá la factura'
+                      : 'Crea una nueva factura agregando productos'}
                 </p>
               </div>
             </div>
-
             {vista === 'lista' && (
               <Button onClick={() => setVista('nueva')} className="gap-2">
                 <Plus className="h-4 w-4" />
@@ -443,12 +235,11 @@ export default function FacturacionPage() {
           </div>
 
           {vista === 'lista' ? (
-            /* Vista de lista de facturas */
             <Card className="border-border/50 bg-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-foreground">
                   <FileText className="h-5 w-5 text-primary" />
-                  Facturas Anteriores
+                  Facturas
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -461,23 +252,34 @@ export default function FacturacionPage() {
                         <TableHead className="text-muted-foreground">Cliente</TableHead>
                         <TableHead className="text-right text-muted-foreground">Total</TableHead>
                         <TableHead className="text-muted-foreground">Estado</TableHead>
+                        <TableHead className="text-muted-foreground">Origen</TableHead>
                         <TableHead className="text-right text-muted-foreground">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {facturasAnteriores.map((factura) => (
+                      {facturas.map((factura) => (
                         <TableRow key={factura.id} className="border-border/50">
                           <TableCell className="font-medium text-foreground">
                             {factura.id}
                           </TableCell>
                           <TableCell className="text-muted-foreground">
-                            {new Date(factura.fecha).toLocaleDateString('es-AR')}
+                            {formatDate(factura.fecha)}
                           </TableCell>
                           <TableCell className="text-foreground">{factura.cliente}</TableCell>
                           <TableCell className="text-right font-medium text-foreground">
                             ${formatMoney(factura.totalConIva)}
                           </TableCell>
                           <TableCell>{getEstadoBadge(factura.estado)}</TableCell>
+                          <TableCell>
+                            {factura.desdePedidoId ? (
+                              <Badge variant="outline" className="gap-1 text-xs">
+                                <ClipboardList className="h-3 w-3" />
+                                {factura.desdePedidoId}
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">Manual</span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right">
                             <Button
                               variant="ghost"
@@ -496,14 +298,23 @@ export default function FacturacionPage() {
               </CardContent>
             </Card>
           ) : (
-            /* Vista de nueva factura */
             <div className="grid gap-6 lg:grid-cols-3">
-              {/* Formulario para agregar items */}
+              {/* Formulario */}
               <Card className="border-border/50 bg-card lg:col-span-1">
                 <CardHeader>
                   <CardTitle className="text-foreground">Agregar Producto</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cliente">Cliente</Label>
+                    <Input
+                      id="cliente"
+                      value={cliente}
+                      onChange={(e) => setCliente(e.target.value)}
+                      placeholder="Nombre del cliente"
+                      className="border-border/50 bg-background"
+                    />
+                  </div>
                   <div className="grid grid-cols-[72px_1fr] gap-3">
                     <div className="space-y-2">
                       <Label htmlFor="codigo">Código</Label>
@@ -534,7 +345,6 @@ export default function FacturacionPage() {
                       </Select>
                     </div>
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="medidas">Medidas</Label>
                     <Input
@@ -546,7 +356,6 @@ export default function FacturacionPage() {
                       className="border-border/50 bg-background"
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="cantidadXPaquete">Cantidad x paquete</Label>
                     <Input
@@ -559,7 +368,6 @@ export default function FacturacionPage() {
                       className="border-border/50 bg-background"
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="precioLista">Precio de lista ($)</Label>
                     <Input
@@ -572,7 +380,6 @@ export default function FacturacionPage() {
                       className="border-border/50 bg-background"
                     />
                   </div>
-
                   <div className="space-y-2 rounded-lg bg-primary/10 p-3">
                     <p className="text-xs text-muted-foreground">
                       Cantidad × paquete × precio de lista
@@ -592,7 +399,6 @@ export default function FacturacionPage() {
                       </span>
                     </div>
                   </div>
-
                   <Button
                     onClick={agregarItem}
                     className="w-full gap-2"
@@ -610,24 +416,44 @@ export default function FacturacionPage() {
                 </CardContent>
               </Card>
 
-              {/* Tabla de items de la factura */}
+              {/* Detalle */}
               <Card className="border-border/50 bg-card lg:col-span-2">
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-foreground">Detalle de Factura</CardTitle>
-                  {items.length > 0 && (
-                    <Button onClick={exportarExcel} variant="outline" className="gap-2">
-                      <Download className="h-4 w-4" />
-                      Exportar Excel
-                    </Button>
-                  )}
+                <CardHeader className="flex flex-row items-center justify-between gap-2">
+                  <CardTitle className="text-foreground">
+                    {desdePedidoId ? 'Detalle de Factura (desde pedido)' : 'Detalle de Factura'}
+                  </CardTitle>
+                  <div className="flex gap-2">
+                    {items.length > 0 && (
+                      <>
+                        <Button onClick={exportarExcel} variant="outline" className="gap-2">
+                          <Download className="h-4 w-4" />
+                          Excel
+                        </Button>
+                        <Button
+                          onClick={confirmarFactura}
+                          disabled={!cliente.trim()}
+                          className="gap-2"
+                        >
+                          <Check className="h-4 w-4" />
+                          Confirmar Factura
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
+                  {desdePedidoId && items.length > 0 && (
+                    <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                      <p className="text-sm text-primary">
+                        Esta factura se generó desde el pedido <strong>{desdePedidoId}</strong>.
+                        Podés editar, agregar o eliminar productos antes de confirmar.
+                      </p>
+                    </div>
+                  )}
                   {items.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <FileText className="mb-4 h-12 w-12 text-muted-foreground/50" />
-                      <p className="text-muted-foreground">
-                        No hay productos agregados
-                      </p>
+                      <p className="text-muted-foreground">No hay productos agregados</p>
                       <p className="text-sm text-muted-foreground/70">
                         Agrega productos usando el formulario de la izquierda
                       </p>
@@ -685,7 +511,6 @@ export default function FacturacionPage() {
                           </TableBody>
                         </Table>
                       </div>
-
                       <div className="mt-6 flex justify-end">
                         <div className="min-w-[220px] space-y-2 rounded-lg bg-primary/10 p-4 text-right">
                           <div className="flex justify-between gap-6 text-sm">
@@ -715,7 +540,7 @@ export default function FacturacionPage() {
             </div>
           )}
 
-          {/* Modal de detalle de factura */}
+          {/* Modal detalle */}
           <Dialog open={!!facturaDetalle} onOpenChange={() => setFacturaDetalle(null)}>
             <DialogContent className="max-w-2xl border-border/50 bg-card">
               <DialogHeader>
@@ -734,15 +559,23 @@ export default function FacturacionPage() {
                     <div>
                       <span className="text-muted-foreground">Fecha: </span>
                       <span className="font-medium text-foreground">
-                        {new Date(facturaDetalle.fecha).toLocaleDateString('es-AR')}
+                        {formatDate(facturaDetalle.fecha)}
                       </span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Estado: </span>
                       {getEstadoBadge(facturaDetalle.estado)}
                     </div>
+                    {facturaDetalle.desdePedidoId && (
+                      <div>
+                        <span className="text-muted-foreground">Pedido: </span>
+                        <Badge variant="outline" className="gap-1 text-xs">
+                          <ClipboardList className="h-3 w-3" />
+                          {facturaDetalle.desdePedidoId}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
-
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
@@ -777,7 +610,6 @@ export default function FacturacionPage() {
                       </TableBody>
                     </Table>
                   </div>
-
                   <div className="flex justify-end pt-4">
                     <div className="min-w-[200px] space-y-2 rounded-lg bg-primary/10 p-4 text-right">
                       <div className="flex justify-between gap-4 text-sm">
@@ -798,8 +630,14 @@ export default function FacturacionPage() {
               )}
             </DialogContent>
           </Dialog>
-        </div>
-      </main>
-    </div>
+    </PageShell>
+  )
+}
+
+export default function FacturacionPage() {
+  return (
+    <Suspense fallback={<PageShell />}>
+      <FacturacionPageContent />
+    </Suspense>
   )
 }
