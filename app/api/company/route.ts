@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { CompanyRepositoryError, getCompanyContextForUser, inviteCompanyMember, listCompanyMembers, updateCompanyMemberAccess, updateCompanyName } from '@/lib/company-repository'
 import { hasCompanyPermission } from '@/lib/company'
+import { getAppUrl } from '@/lib/app-url'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
@@ -42,8 +43,7 @@ export async function POST(request: Request) {
     const context = await getCompanyContextForUser(user)
     const input = await request.json() as Record<string, unknown>
     const action = input.action
-    const origin = new URL(request.url).origin
-    const redirectTo = `${origin}/auth/callback?next=/actualizar-contrasena`
+    const redirectTo = getAppUrl('/auth/callback?next=/actualizar-contrasena').toString()
     if (action === 'invite') {
       return NextResponse.json({ members: await inviteCompanyMember(context, { email: input.email, role: input.role, permissions: input.permissions, redirectTo }) })
     }

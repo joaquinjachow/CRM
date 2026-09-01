@@ -1,11 +1,11 @@
 'use client'
-
 import Link from 'next/link'
 import { useState } from 'react'
 import { AuthPage } from '@/components/auth-page'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { getAppUrl } from '@/lib/app-url'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 export default function ForgotPasswordPage() {
@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
     setMessage('')
     setLoading(true)
 
-    const redirectTo = new URL('/auth/callback', window.location.origin)
+    const redirectTo = getAppUrl('/auth/callback')
     redirectTo.searchParams.set('next', '/actualizar-contrasena')
     const { error: resetError } = await createSupabaseBrowserClient().auth.resetPasswordForEmail(email.trim(), {
       redirectTo: redirectTo.toString(),

@@ -1,5 +1,4 @@
 'use client'
-
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -7,6 +6,7 @@ import { AuthPage } from '@/components/auth-page'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { getAppUrl } from '@/lib/app-url'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 export default function RegisterPage() {
@@ -34,7 +34,7 @@ export default function RegisterPage() {
     }
 
     setLoading(true)
-    const emailRedirectTo = new URL('/auth/callback', window.location.origin)
+    const emailRedirectTo = getAppUrl('/auth/callback')
     emailRedirectTo.searchParams.set('next', '/')
     const { data, error: signUpError } = await createSupabaseBrowserClient().auth.signUp({
       email: email.trim(),
