@@ -9,22 +9,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Plus, Trash2, Eye, ClipboardList, FileDown, MessageCircle, FileText } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Eye, ClipboardList, FileDown, MessageCircle, FileText, CircleX } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useStock } from '@/lib/stock-context'
-import { formatMoney, formatDate, type PedidoItem, type Pedido } from '@/lib/stock-data'
+import { formatMoney, formatDate, type PedidoItem, type Pedido, type Factura } from '@/lib/stock-data'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
 export default function PedidosPage() {
   const router = useRouter()
-  const { stock, pedidos, crearPedido } = useStock()
+  const { stock, pedidos, facturas, crearPedido, cancelarPedido, actualizarFacturaEstado } = useStock()
   const [vista, setVista] = useState<'lista' | 'nuevo'>('lista')
   const [cliente, setCliente] = useState('')
   const [stockItemId, setStockItemId] = useState('')
   const [cantidad, setCantidad] = useState('')
   const [items, setItems] = useState<Omit<PedidoItem, 'id'>[]>([])
   const [pedidoDetalle, setPedidoDetalle] = useState<Pedido | null>(null)
+  const [facturaDetalle, setFacturaDetalle] = useState<Factura | null>(null)
 
   const stockSeleccionado = stock.find((s) => s.id === stockItemId)
   const cantidadNum = parseInt(cantidad, 10) || 0
@@ -73,9 +74,9 @@ export default function PedidosPage() {
 
   const totalPedido = items.reduce((sum, i) => sum + i.total, 0)
 
-  const confirmarPedido = () => {
+  const confirmarPedido = async () => {
     if (!cliente.trim() || items.length === 0) return
-    const result = crearPedido(cliente.trim(), items)
+    const result = await crearPedido(cliente.trim(), items)
     if (result) {
       setCliente('')
       setItems([])
@@ -116,7 +117,6 @@ export default function PedidosPage() {
       headStyles: { fillColor: [152, 105, 76] },
       footStyles: { fillColor: [235, 192, 149], textColor: [45, 36, 24], fontStyle: 'bold' },
     })
-
     doc.save(`pedido_${pedido.id}.pdf`)
   }
 
@@ -124,10 +124,9 @@ export default function PedidosPage() {
     const lineas = pedido.items
       .map(
         (item, i) =>
-          `${i + 1}. ${item.producto} (${item.medidas}) — ${formatMoney(item.cantidad)} uds × $${formatMoney(item.precioLista)} = *$${formatMoney(item.total)}*`,
+          `${i + 1}. ${item.producto} (${item.medidas}) — ${formatMoney(item.cantidad)} p × $${formatMoney(item.precioLista)} = *$${formatMoney(item.total)}*`,
       )
       .join('\n')
-
     const mensaje = `*PEDIDO ${pedido.id}*\n📅 Fecha: ${formatDate(pedido.fecha)}\n👤 Cliente: ${pedido.cliente}\n\n📦 Detalle:\n${lineas}\n\n💰 *Total: $${formatMoney(pedido.total)}*`
     window.open(`https://wa.me/?text=${encodeURIComponent(mensaje)}`, '_blank')
   }
@@ -143,6 +142,29 @@ export default function PedidosPage() {
       default:
         return <Badge>{estado}</Badge>
     }
+  }
+
+  const cancelarPedidoSeleccionado = async (pedido: Pedido) => {
+    const ok = await cancelarPedido(pedido.id)
+    if (ok) {
+      setPedidoDetalle((actual) =>
+        actual && actual.id === pedido.id
+          ? { ...actual, estado: 'cancelado' as const }
+          : actual,
+      )
+    }
+  }
+
+  const abrirFacturaDetalle = (facturaId?: string) => {
+    if (!facturaId) return
+    const factura = facturas.find((item) => item.id === facturaId)
+    if (factura) setFacturaDetalle(factura)
+  }
+
+  const cambiarEstadoFacturaDetalle = async (estado: Factura['estado']) => {
+    if (!facturaDetalle) return
+    await actualizarFacturaEstado(facturaDetalle.id, estado)
+    setFacturaDetalle((actual) => (actual ? { ...actual, estado } : actual))
   }
 
   return (
@@ -178,7 +200,6 @@ export default function PedidosPage() {
               </Button>
             )}
           </div>
-
           {vista === 'lista' ? (
             <Card className="border-border/50 bg-card">
               <CardHeader>
@@ -195,6 +216,10 @@ export default function PedidosPage() {
                     <p className="text-sm text-muted-foreground/70">
                       Crea un nuevo pedido para empezar
                     </p>
+                    <Button onClick={() => setVista('nuevo')} className="mt-4 gap-2">
+                      <Plus className="h-4 w-4" />
+                      Crear pedido
+                    </Button>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -230,7 +255,7 @@ export default function PedidosPage() {
                                 >
                                   <Eye className="h-4 w-4" />
                                 </Button>
-                                {!pedido.facturaId ? (
+                                {pedido.estado === 'pendiente' && !pedido.facturaId ? (
                                   <Button
                                     variant="ghost"
                                     size="icon"
@@ -241,9 +266,29 @@ export default function PedidosPage() {
                                     <FileText className="h-4 w-4" />
                                   </Button>
                                 ) : (
-                                  <Badge variant="outline" className="ml-1 gap-1 text-[10px]">
+                                  <Button
+                                    variant="ghost"
+                                    className="h-auto gap-1 px-2 py-1 text-[10px]"
+                                    onClick={() => abrirFacturaDetalle(pedido.facturaId)}
+                                    title="Ver factura"
+                                  >
                                     <FileText className="h-3 w-3" />
                                     {pedido.facturaId}
+                                  </Button>
+                                )}
+                                {pedido.estado === 'pendiente' ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => cancelarPedidoSeleccionado(pedido)}
+                                    className="text-muted-foreground hover:text-destructive"
+                                    title="Cancelar pedido y reponer stock"
+                                  >
+                                    <CircleX className="h-4 w-4" />
+                                  </Button>
+                                ) : (
+                                  <Badge variant="outline" className="ml-1 text-[10px]">
+                                    {pedido.estado === 'cancelado' ? 'Cancelado' : 'Cerrado'}
                                   </Badge>
                                 )}
                                 <Button
@@ -303,15 +348,20 @@ export default function PedidosPage() {
                           .filter((s) => s.cantidad > 0)
                           .map((s) => (
                             <SelectItem key={s.id} value={s.id}>
-                              {s.producto} ({s.medidas}) — {formatMoney(s.cantidad)} uds
+                              {s.producto} ({s.medidas}) — {formatMoney(s.cantidad)} p
                             </SelectItem>
                           ))}
                       </SelectContent>
                     </Select>
+                    {stock.length === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Todavia no hay stock disponible. Registra un ingreso de mercaderia antes de crear un pedido.
+                      </p>
+                    )}
                   </div>
                   {stockSeleccionado && (
                     <p className="text-xs text-muted-foreground">
-                      Disponible: <span className="font-medium text-foreground">{formatMoney(stockSeleccionado.cantidad)} uds</span>
+                      Disponible: <span className="font-medium text-foreground">{formatMoney(stockSeleccionado.cantidad)} paquetes</span>
                     </p>
                   )}
                   <div className="space-y-2">
@@ -347,7 +397,6 @@ export default function PedidosPage() {
                   </Button>
                 </CardContent>
               </Card>
-
               {/* Detalle del pedido */}
               <Card className="border-border/50 bg-card lg:col-span-2">
                 <CardHeader className="flex flex-row items-center justify-between">
@@ -429,7 +478,6 @@ export default function PedidosPage() {
               </Card>
             </div>
           )}
-
           {/* Modal detalle */}
           <Dialog open={!!pedidoDetalle} onOpenChange={() => setPedidoDetalle(null)}>
             <DialogContent className="max-w-2xl border-border/50 bg-card">
@@ -489,7 +537,7 @@ export default function PedidosPage() {
                   </div>
                   <div className="flex items-center justify-between pt-4">
                     <div className="flex flex-wrap gap-2">
-                      {!pedidoDetalle.facturaId ? (
+                      {pedidoDetalle.estado === 'pendiente' && !pedidoDetalle.facturaId ? (
                         <Button
                           onClick={() => {
                             setPedidoDetalle(null)
@@ -501,10 +549,39 @@ export default function PedidosPage() {
                           Generar Factura
                         </Button>
                       ) : (
+                      <Button
+                        variant="outline"
+                        onClick={() => abrirFacturaDetalle(pedidoDetalle.facturaId)}
+                        className="gap-2"
+                      >
+                        <FileText className="h-4 w-4" />
+                        Ver factura {pedidoDetalle.facturaId}
+                      </Button>
+                      )}
+                      {pedidoDetalle.estado === 'pendiente' ? (
+                        <Button
+                          variant="outline"
+                          onClick={() => cancelarPedidoSeleccionado(pedidoDetalle)}
+                          className="gap-2"
+                        >
+                          <CircleX className="h-4 w-4" />
+                          Cancelar pedido
+                        </Button>
+                      ) : pedidoDetalle.estado === 'cancelado' ? (
                         <Badge variant="outline" className="gap-1 px-3 py-2 text-sm">
-                          <FileText className="h-4 w-4" />
-                          Facturado: {pedidoDetalle.facturaId}
+                          <CircleX className="h-4 w-4" />
+                          Cancelado
                         </Badge>
+                      ) : null}
+                      {pedidoDetalle.facturaId && (
+                        <Button
+                          variant="outline"
+                          onClick={() => abrirFacturaDetalle(pedidoDetalle.facturaId)}
+                          className="gap-2"
+                        >
+                          <FileText className="h-4 w-4" />
+                          Ver factura
+                        </Button>
                       )}
                       <Button
                         variant="outline"
@@ -528,6 +605,98 @@ export default function PedidosPage() {
                         <span className="font-medium text-muted-foreground">Total</span>
                         <span className="text-2xl font-bold text-primary">
                           ${formatMoney(pedidoDetalle.total)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+          <Dialog open={!!facturaDetalle} onOpenChange={() => setFacturaDetalle(null)}>
+            <DialogContent className="max-w-2xl border-border/50 bg-card">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-foreground">
+                  <FileText className="h-5 w-5 text-primary" />
+                  Factura {facturaDetalle?.id}
+                </DialogTitle>
+              </DialogHeader>
+              {facturaDetalle && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Cliente: </span>
+                      <span className="font-medium text-foreground">{facturaDetalle.cliente}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Fecha: </span>
+                      <span className="font-medium text-foreground">{formatDate(facturaDetalle.fecha)}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Estado: </span>
+                      <Badge className={facturaDetalle.estado === 'pagada' ? 'bg-emerald-500/20 text-emerald-400' : facturaDetalle.estado === 'vencida' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'}>
+                        {facturaDetalle.estado === 'pagada' ? 'Pagada' : facturaDetalle.estado === 'vencida' ? 'Vencida' : 'Pendiente'}
+                      </Badge>
+                    </div>
+                    {facturaDetalle.desdePedidoId && (
+                      <div>
+                        <span className="text-muted-foreground">Pedido: </span>
+                        <Button
+                          variant="ghost"
+                          className="h-auto gap-1 px-2 py-1 text-xs"
+                          onClick={() => {
+                            const pedido = pedidos.find((item) => item.id === facturaDetalle.desdePedidoId)
+                            if (pedido) setPedidoDetalle(pedido)
+                          }}
+                        >
+                          <ClipboardList className="h-3 w-3" />
+                          {facturaDetalle.desdePedidoId}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-border/50 hover:bg-transparent">
+                          <TableHead className="text-muted-foreground">Cód.</TableHead>
+                          <TableHead className="text-muted-foreground">Producto</TableHead>
+                          <TableHead className="text-muted-foreground">Medidas</TableHead>
+                          <TableHead className="text-right text-muted-foreground">Cant. x Paq.</TableHead>
+                          <TableHead className="text-right text-muted-foreground">Con IVA</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {facturaDetalle.items.map((item, index) => (
+                          <TableRow key={index} className="border-border/50">
+                            <TableCell className="text-muted-foreground">{item.codigo}</TableCell>
+                            <TableCell className="font-medium text-foreground">{item.producto}</TableCell>
+                            <TableCell className="text-muted-foreground">{item.medidas}</TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {formatMoney(item.cantidadXPaquete)}
+                            </TableCell>
+                            <TableCell className="text-right font-medium text-foreground">
+                              ${formatMoney(item.totalConIva)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="flex items-center justify-between pt-4">
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" onClick={() => cambiarEstadoFacturaDetalle('pagada')}>
+                        Marcar pagada
+                      </Button>
+                      <Button variant="outline" onClick={() => cambiarEstadoFacturaDetalle('pendiente')}>
+                        Marcar pendiente
+                      </Button>
+                    </div>
+                    <div className="min-w-[200px] space-y-2 rounded-lg bg-primary/10 p-4 text-right">
+                      <div className="flex justify-between gap-4">
+                        <span className="font-medium text-muted-foreground">Total</span>
+                        <span className="text-2xl font-bold text-primary">
+                          ${formatMoney(facturaDetalle.totalConIva)}
                         </span>
                       </div>
                     </div>

@@ -1,0 +1,24 @@
+import 'server-only'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+
+const globalSupabase = globalThis as typeof globalThis & {
+  crmSupabaseAdmin?: SupabaseClient
+}
+
+function createSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const secretKey = process.env.SUPABASE_SECRET_KEY
+  if (!url || !secretKey) throw new Error('Falta configurar Supabase para el CRM.')
+
+  return createClient(url, secretKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+}
+
+export function getSupabaseAdmin() {
+  if (!globalSupabase.crmSupabaseAdmin) globalSupabase.crmSupabaseAdmin = createSupabaseAdmin()
+  return globalSupabase.crmSupabaseAdmin
+}

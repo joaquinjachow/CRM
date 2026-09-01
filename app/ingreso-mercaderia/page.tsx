@@ -10,14 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ArrowLeft, Plus, Trash2, Eye, PackagePlus, Download, MessageCircle } from 'lucide-react'
 import { useStock } from '@/lib/stock-context'
-import {
-  formatMoney,
-  formatDate,
-  productosDisponibles,
-  codigoPorProducto,
-  type IngresoItem,
-  type IngresoMercaderia,
-} from '@/lib/stock-data'
+import { formatMoney, formatDate, productosDisponibles, codigoPorProducto, type IngresoItem, type IngresoMercaderia } from '@/lib/stock-data'
 import * as XLSX from 'xlsx'
 
 export default function IngresoMercaderiaPage() {
@@ -67,9 +60,10 @@ export default function IngresoMercaderiaPage() {
 
   const totalIngreso = items.reduce((sum, i) => sum + i.total, 0)
 
-  const confirmarIngreso = () => {
+  const confirmarIngreso = async () => {
     if (!proveedor.trim() || items.length === 0) return
-    crearIngreso(proveedor.trim(), items)
+    const ingreso = await crearIngreso(proveedor.trim(), items)
+    if (!ingreso) return
     setProveedor('')
     setItems([])
     setVista('lista')
@@ -158,7 +152,6 @@ export default function IngresoMercaderiaPage() {
               </Button>
             )}
           </div>
-
           {vista === 'lista' ? (
             <Card className="border-border/50 bg-card">
               <CardHeader>
@@ -324,7 +317,6 @@ export default function IngresoMercaderiaPage() {
                   </Button>
                 </CardContent>
               </Card>
-
               {/* Detalle del ingreso */}
               <Card className="border-border/50 bg-card lg:col-span-2">
                 <CardHeader className="flex flex-row items-center justify-between">
@@ -406,7 +398,6 @@ export default function IngresoMercaderiaPage() {
               </Card>
             </div>
           )}
-
           {/* Modal detalle */}
           <Dialog open={!!ingresoDetalle} onOpenChange={() => setIngresoDetalle(null)}>
             <DialogContent className="max-w-2xl border-border/50 bg-card">

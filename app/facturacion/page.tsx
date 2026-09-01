@@ -12,17 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Plus, Download, Trash2, Eye, FileText, Check, ClipboardList } from 'lucide-react'
 import { useStock } from '@/lib/stock-context'
-import {
-  productosDisponibles,
-  productoPorCodigo,
-  codigoPorProducto,
-  formatMoney,
-  formatDate,
-  calcularTotalesLinea,
-  IVA_RATE,
-  type Factura,
-  type ItemFacturaLinea,
-} from '@/lib/stock-data'
+import { productosDisponibles, productoPorCodigo, codigoPorProducto, formatMoney, formatDate, calcularTotalesLinea, IVA_RATE, type Factura, type ItemFacturaLinea } from '@/lib/stock-data'
 import * as XLSX from 'xlsx'
 
 interface ItemFactura extends ItemFacturaLinea {
@@ -33,9 +23,7 @@ function FacturacionPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const desdePedidoId = searchParams.get('desde_pedido')
-
-  const { facturas, crearFactura, obtenerPedido } = useStock()
-
+  const { facturas, crearFactura, obtenerPedido, actualizarFacturaEstado } = useStock()
   const [vista, setVista] = useState<'lista' | 'nueva'>('lista')
   const [cliente, setCliente] = useState('')
   const [items, setItems] = useState<ItemFactura[]>([])
@@ -45,6 +33,7 @@ function FacturacionPageContent() {
   const [medidas, setMedidas] = useState('')
   const [precioLista, setPrecioLista] = useState('')
   const [facturaDetalle, setFacturaDetalle] = useState<Factura | null>(null)
+  const [pedidoDetalle, setPedidoDetalle] = useState<ReturnType<typeof obtenerPedido> | null>(null)
   const [pedidoPrellenado, setPedidoPrellenado] = useState(false)
 
   useEffect(() => {
@@ -142,11 +131,29 @@ function FacturacionPageContent() {
   const totalFacturaConIva = items.reduce((sum, item) => sum + item.totalConIva, 0)
   const totalIvaFactura = totalFacturaConIva - totalFacturaSinIva
 
-  const confirmarFactura = () => {
+  const confirmarFactura = async () => {
     if (!cliente.trim() || items.length === 0) return
     const itemsSinId: ItemFacturaLinea[] = items.map(({ id: _id, ...rest }) => rest)
-    crearFactura(cliente.trim(), itemsSinId, desdePedidoId ?? undefined)
-    volverALista()
+    const factura = await crearFactura(cliente.trim(), itemsSinId, desdePedidoId ?? undefined)
+    if (!factura) return
+    setVista('lista')
+    setCliente('')
+    setItems([])
+    limpiarCamposProducto()
+    setPedidoPrellenado(false)
+    router.replace('/facturacion')
+  }
+
+  const abrirPedidoDetalle = (pedidoId?: string) => {
+    if (!pedidoId) return
+    const pedido = obtenerPedido(pedidoId)
+    if (pedido) setPedidoDetalle(pedido)
+  }
+
+  const cambiarEstadoFacturaDetalle = async (estado: Factura['estado']) => {
+    if (!facturaDetalle) return
+    await actualizarFacturaEstado(facturaDetalle.id, estado)
+    setFacturaDetalle((actual) => (actual ? { ...actual, estado } : actual))
   }
 
   const exportarExcel = () => {
@@ -233,7 +240,6 @@ function FacturacionPageContent() {
               </Button>
             )}
           </div>
-
           {vista === 'lista' ? (
             <Card className="border-border/50 bg-card">
               <CardHeader>
@@ -257,7 +263,22 @@ function FacturacionPageContent() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {facturas.map((factura) => (
+                      {facturas.length === 0 ? (
+                        <TableRow className="border-border/50">
+                          <TableCell colSpan={7} className="py-12 text-center">
+                            <FileText className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
+                            <p className="text-muted-foreground">No hay facturas registradas</p>
+                            <p className="mt-1 text-sm text-muted-foreground/70">
+                              Crea una factura para comenzar a registrar las ventas.
+                            </p>
+                            <Button onClick={() => setVista('nueva')} className="mt-4 gap-2">
+                              <Plus className="h-4 w-4" />
+                              Nueva Factura
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        facturas.map((factura) => (
                         <TableRow key={factura.id} className="border-border/50">
                           <TableCell className="font-medium text-foreground">
                             {factura.id}
@@ -272,10 +293,14 @@ function FacturacionPageContent() {
                           <TableCell>{getEstadoBadge(factura.estado)}</TableCell>
                           <TableCell>
                             {factura.desdePedidoId ? (
-                              <Badge variant="outline" className="gap-1 text-xs">
+                              <Button
+                                variant="ghost"
+                                className="h-auto gap-1 px-2 py-1 text-xs"
+                                onClick={() => abrirPedidoDetalle(factura.desdePedidoId)}
+                              >
                                 <ClipboardList className="h-3 w-3" />
                                 {factura.desdePedidoId}
-                              </Badge>
+                              </Button>
                             ) : (
                               <span className="text-xs text-muted-foreground">Manual</span>
                             )}
@@ -291,7 +316,8 @@ function FacturacionPageContent() {
                             </Button>
                           </TableCell>
                         </TableRow>
-                      ))}
+                        ))
+                      )}
                     </TableBody>
                   </Table>
                 </div>
@@ -415,7 +441,6 @@ function FacturacionPageContent() {
                   </Button>
                 </CardContent>
               </Card>
-
               {/* Detalle */}
               <Card className="border-border/50 bg-card lg:col-span-2">
                 <CardHeader className="flex flex-row items-center justify-between gap-2">
@@ -539,7 +564,6 @@ function FacturacionPageContent() {
               </Card>
             </div>
           )}
-
           {/* Modal detalle */}
           <Dialog open={!!facturaDetalle} onOpenChange={() => setFacturaDetalle(null)}>
             <DialogContent className="max-w-2xl border-border/50 bg-card">
@@ -569,10 +593,14 @@ function FacturacionPageContent() {
                     {facturaDetalle.desdePedidoId && (
                       <div>
                         <span className="text-muted-foreground">Pedido: </span>
-                        <Badge variant="outline" className="gap-1 text-xs">
+                        <Button
+                          variant="ghost"
+                          className="h-auto gap-1 px-2 py-1 text-xs"
+                          onClick={() => abrirPedidoDetalle(facturaDetalle.desdePedidoId)}
+                        >
                           <ClipboardList className="h-3 w-3" />
                           {facturaDetalle.desdePedidoId}
-                        </Badge>
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -610,18 +638,106 @@ function FacturacionPageContent() {
                       </TableBody>
                     </Table>
                   </div>
-                  <div className="flex justify-end pt-4">
-                    <div className="min-w-[200px] space-y-2 rounded-lg bg-primary/10 p-4 text-right">
-                      <div className="flex justify-between gap-4 text-sm">
-                        <span className="text-muted-foreground">Sin IVA</span>
-                        <span className="font-medium text-foreground">
-                          ${formatMoney(facturaDetalle.totalSinIva)}
-                        </span>
+                  <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => cambiarEstadoFacturaDetalle('pagada')}
+                        className="min-w-[128px]"
+                      >
+                        Marcar pagada
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => cambiarEstadoFacturaDetalle('pendiente')}
+                        className="min-w-[128px]"
+                      >
+                        Marcar pendiente
+                      </Button>
+                    </div>
+                    <div className="w-full rounded-xl border border-border/60 bg-muted/20 p-4 sm:w-[18rem]">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-4 text-sm">
+                          <span className="text-muted-foreground">Sin IVA</span>
+                          <span className="font-medium text-foreground">
+                            ${formatMoney(facturaDetalle.totalSinIva)}
+                          </span>
+                        </div>
+                        <div className="border-t border-border/60 pt-3">
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-muted-foreground">Con IVA</span>
+                            <span className="text-lg font-semibold text-primary">
+                              ${formatMoney(facturaDetalle.totalConIva)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex justify-between gap-4 border-t border-primary/20 pt-2">
-                        <span className="font-medium text-muted-foreground">Con IVA</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+          <Dialog open={!!pedidoDetalle} onOpenChange={() => setPedidoDetalle(null)}>
+            <DialogContent className="max-w-2xl border-border/50 bg-card">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-foreground">
+                  <ClipboardList className="h-5 w-5 text-primary" />
+                  Pedido {pedidoDetalle?.id}
+                </DialogTitle>
+              </DialogHeader>
+              {pedidoDetalle && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Cliente: </span>
+                      <span className="font-medium text-foreground">{pedidoDetalle.cliente}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Fecha: </span>
+                      <span className="font-medium text-foreground">{formatDate(pedidoDetalle.fecha)}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Estado: </span>
+                      <span className="font-medium text-foreground">{pedidoDetalle.estado}</span>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-border/50 hover:bg-transparent">
+                          <TableHead className="text-muted-foreground">Cód.</TableHead>
+                          <TableHead className="text-muted-foreground">Producto</TableHead>
+                          <TableHead className="text-muted-foreground">Medidas</TableHead>
+                          <TableHead className="text-right text-muted-foreground">Cant.</TableHead>
+                          <TableHead className="text-right text-muted-foreground">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pedidoDetalle.items.map((item) => (
+                          <TableRow key={item.id} className="border-border/50">
+                            <TableCell className="text-muted-foreground">{item.codigo}</TableCell>
+                            <TableCell className="font-medium text-foreground">{item.producto}</TableCell>
+                            <TableCell className="text-muted-foreground">{item.medidas}</TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {formatMoney(item.cantidad)}
+                            </TableCell>
+                            <TableCell className="text-right font-medium text-foreground">
+                              ${formatMoney(item.total)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="flex justify-end">
+                    <div className="min-w-[180px] space-y-2 rounded-lg bg-primary/10 p-4 text-right">
+                      <div className="flex justify-between gap-4">
+                        <span className="font-medium text-muted-foreground">Total</span>
                         <span className="text-2xl font-bold text-primary">
-                          ${formatMoney(facturaDetalle.totalConIva)}
+                          ${formatMoney(pedidoDetalle.total)}
                         </span>
                       </div>
                     </div>

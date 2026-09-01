@@ -9,71 +9,69 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Calculator, Settings, CheckCircle, XCircle, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
-const COST_PER_KM_KEY = 'translogix_cost_per_km'
 const REFERENCE_KM = 1000
 
 interface FixedCostInputs {
-  insuranceCost: number
-  maintenanceCost: number
-  officeCost: number
-  silviSalary: number
-  satelliteCost: number
+  insuranceCost: string
+  maintenanceCost: string
+  officeCost: string
+  silviSalary: string
+  satelliteCost: string
 }
 
 interface FreightCheckInputs {
-  freightPrice: number
-  kilometers: number
-  fuelCost: number
-  tollCost: number
-  driverPercentage: number
-  profitPercentage: number
+  freightPrice: string
+  kilometers: string
+  fuelCost: string
+  tollCost: string
+  driverPercentage: string
+  profitPercentage: string
 }
 
 interface NumberFieldConfig<T extends string> {
   id: T
   label: string
-  placeholder: string
 }
 
 const fixedCostFields: NumberFieldConfig<keyof FixedCostInputs>[] = [
-  { id: 'insuranceCost', label: 'Costo de Seguro ($)', placeholder: 'Ej: 5000' },
-  { id: 'maintenanceCost', label: 'Costo de Mantenimiento ($)', placeholder: 'Ej: 3000' },
-  { id: 'officeCost', label: 'Costo de Oficina ($)', placeholder: 'Ej: 15000' },
-  { id: 'silviSalary', label: 'Sueldo Silvi ($)', placeholder: 'Ej: 450000' },
-  { id: 'satelliteCost', label: 'Costo Satelital ($)', placeholder: 'Ej: 12000' },
+  { id: 'insuranceCost', label: 'Costo de Seguro ($)' },
+  { id: 'maintenanceCost', label: 'Costo de Mantenimiento ($)' },
+  { id: 'officeCost', label: 'Costo de Oficina ($)' },
+  { id: 'silviSalary', label: 'Sueldo Silvi ($)' },
+  { id: 'satelliteCost', label: 'Costo Satelital ($)' },
 ]
 
 const freightMainFields: NumberFieldConfig<'freightPrice' | 'kilometers'>[] = [
-  { id: 'freightPrice', label: 'Precio que ofrecen ($)', placeholder: 'Ej: 150000' },
-  { id: 'kilometers', label: 'Kilómetros del viaje', placeholder: 'Ej: 800' },
+  { id: 'freightPrice', label: 'Precio que ofrecen ($)' },
+  { id: 'kilometers', label: 'Kilometros del viaje' },
 ]
 
 const freightCostFields: NumberFieldConfig<'fuelCost' | 'tollCost'>[] = [
-  { id: 'fuelCost', label: 'Costo de Gasoil ($)', placeholder: 'Ej: 25000' },
-  { id: 'tollCost', label: 'Costo de Peajes ($)', placeholder: 'Ej: 8000' },
+  { id: 'fuelCost', label: 'Costo de Gasoil ($)' },
+  { id: 'tollCost', label: 'Costo de Peajes ($)' },
 ]
 
 const freightPercentageFields: NumberFieldConfig<'driverPercentage' | 'profitPercentage'>[] = [
-  { id: 'driverPercentage', label: 'Porcentaje del Chofer (%)', placeholder: 'Ej: 30' },
-  { id: 'profitPercentage', label: 'Porcentaje de Ganancia (%)', placeholder: 'Ej: 15' },
+  { id: 'driverPercentage', label: 'Porcentaje del Chofer (%)' },
+  { id: 'profitPercentage', label: 'Porcentaje de Ganancia (%)' },
 ]
 
 export default function CalcularFletePage() {
   const [fixedCostInputs, setFixedCostInputs] = useState<FixedCostInputs>({
-    insuranceCost: 5000,
-    maintenanceCost: 3000,
-    officeCost: 0,
-    silviSalary: 0,
-    satelliteCost: 0,
+    insuranceCost: '',
+    maintenanceCost: '',
+    officeCost: '',
+    silviSalary: '',
+    satelliteCost: '',
   })
 
   const [freightInputs, setFreightInputs] = useState<FreightCheckInputs>({
-    freightPrice: 0,
-    kilometers: 0,
-    fuelCost: 0,
-    tollCost: 0,
-    driverPercentage: 30,
-    profitPercentage: 15,
+    freightPrice: '',
+    kilometers: '',
+    fuelCost: '',
+    tollCost: '',
+    driverPercentage: '',
+    profitPercentage: '',
   })
 
   const [costPerKm, setCostPerKm] = useState<number>(0)
@@ -82,22 +80,67 @@ export default function CalcularFletePage() {
   const [showCostResult, setShowCostResult] = useState(false)
   const [showConvenienceResult, setShowConvenienceResult] = useState(false)
   const [calculatedCostPerKm, setCalculatedCostPerKm] = useState<number>(0)
+  const [isLoadingCostPerKm, setIsLoadingCostPerKm] = useState(true)
+  const [isSavingCostPerKm, setIsSavingCostPerKm] = useState(false)
+  const [costPerKmError, setCostPerKmError] = useState('')
+  const [canEditCostPerKm, setCanEditCostPerKm] = useState(false)
+
+  const parseInput = (value: string) => {
+    const parsed = parseFloat(value)
+    return Number.isNaN(parsed) ? 0 : parsed
+  }
 
   useEffect(() => {
-    const saved = localStorage.getItem(COST_PER_KM_KEY)
-    if (saved) {
-      setCostPerKm(parseFloat(saved))
+    let mounted = true
+
+    async function loadCostPerKm() {
+      try {
+        const response = await fetch('/api/company/settings', { cache: 'no-store' })
+        const body = await response.json() as { freightCostPerKm?: number; canEdit?: boolean; error?: string }
+        if (!response.ok) throw new Error(body.error || 'No se pudo cargar el costo por km de la empresa.')
+        if (!mounted) return
+        setCostPerKm(Number(body.freightCostPerKm ?? 0))
+        setCanEditCostPerKm(Boolean(body.canEdit))
+      } catch (requestError) {
+        if (mounted) setCostPerKmError(requestError instanceof Error ? requestError.message : 'No se pudo cargar el costo por km de la empresa.')
+      } finally {
+        if (mounted) setIsLoadingCostPerKm(false)
+      }
+    }
+
+    void loadCostPerKm()
+    return () => {
+      mounted = false
     }
   }, [])
 
+  const persistCostPerKm = async (value: number) => {
+    setCostPerKmError('')
+    setIsSavingCostPerKm(true)
+    try {
+      const response = await fetch('/api/company/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ freightCostPerKm: value }),
+      })
+      const body = await response.json() as { freightCostPerKm?: number; error?: string }
+      if (!response.ok) throw new Error(body.error || 'No se pudo guardar el costo por km de la empresa.')
+      setCostPerKm(Number(body.freightCostPerKm ?? value))
+      return true
+    } catch (requestError) {
+      setCostPerKmError(requestError instanceof Error ? requestError.message : 'No se pudo guardar el costo por km de la empresa.')
+      return false
+    } finally {
+      setIsSavingCostPerKm(false)
+    }
+  }
+
   const calculateCostPerKm = () => {
-    const {
-      insuranceCost,
-      maintenanceCost,
-      officeCost,
-      silviSalary,
-      satelliteCost,
-    } = fixedCostInputs
+    const insuranceCost = parseInput(fixedCostInputs.insuranceCost)
+    const maintenanceCost = parseInput(fixedCostInputs.maintenanceCost)
+    const officeCost = parseInput(fixedCostInputs.officeCost)
+    const silviSalary = parseInput(fixedCostInputs.silviSalary)
+    const satelliteCost = parseInput(fixedCostInputs.satelliteCost)
 
     const totalFixedCosts =
       insuranceCost +
@@ -109,40 +152,41 @@ export default function CalcularFletePage() {
     setCalculatedCostPerKm(costPerKilometer)
     setShowCostResult(true)
   }
+
   const checkConvenience = () => {
     setShowConvenienceResult(true)
   }
-  const baseTripCost = costPerKm * freightInputs.kilometers
-  const baseBeforePercentages =
-    baseTripCost + freightInputs.tollCost + freightInputs.fuelCost
-  const withDriver = baseBeforePercentages * (1 + freightInputs.driverPercentage / 100)
-  const totalCostForFreight = withDriver * (1 + freightInputs.profitPercentage / 100)
-  const profit = freightInputs.freightPrice - totalCostForFreight
-  const isConvenient =
-    profit > 0 &&
-    freightInputs.freightPrice > 0 &&
-    freightInputs.kilometers > 0
 
-  const saveCostPerKm = () => {
+  const freightPrice = parseInput(freightInputs.freightPrice)
+  const kilometers = parseInput(freightInputs.kilometers)
+  const fuelCost = parseInput(freightInputs.fuelCost)
+  const tollCost = parseInput(freightInputs.tollCost)
+  const driverPercentage = parseInput(freightInputs.driverPercentage)
+  const profitPercentage = parseInput(freightInputs.profitPercentage)
+  const baseTripCost = costPerKm * kilometers
+  const baseBeforePercentages = baseTripCost + tollCost + fuelCost
+  const withDriver = baseBeforePercentages * (1 + driverPercentage / 100)
+  const totalCostForFreight = withDriver * (1 + profitPercentage / 100)
+  const profit = freightPrice - totalCostForFreight
+  const isConvenient = profit > 0 && freightPrice > 0 && kilometers > 0
+
+  const saveCostPerKm = async () => {
     const value = parseFloat(editCostPerKm)
     if (!isNaN(value) && value > 0) {
-      setCostPerKm(value)
-      localStorage.setItem(COST_PER_KM_KEY, value.toString())
-      setIsModalOpen(false)
+      if (await persistCostPerKm(value)) setIsModalOpen(false)
     }
   }
 
   const useCalculatedCost = () => {
-    setCostPerKm(calculatedCostPerKm)
-    localStorage.setItem(COST_PER_KM_KEY, calculatedCostPerKm.toString())
+    void persistCostPerKm(calculatedCostPerKm)
   }
 
   const updateFixedCost = (field: keyof FixedCostInputs, value: string) => {
-    setFixedCostInputs({ ...fixedCostInputs, [field]: parseFloat(value) || 0 })
+    setFixedCostInputs({ ...fixedCostInputs, [field]: value })
   }
 
   const updateFreightInput = (field: keyof FreightCheckInputs, value: string) => {
-    setFreightInputs({ ...freightInputs, [field]: parseFloat(value) || 0 })
+    setFreightInputs({ ...freightInputs, [field]: value })
   }
 
   return (
@@ -161,7 +205,7 @@ export default function CalcularFletePage() {
                   Calcular Flete
                 </h1>
                 <p className="mt-1 text-muted-foreground">
-                  Calculá el costo por kilómetro con costos fijos y evaluá si un flete es rentable.
+                  Calcula el costo por kilometro con costos fijos y evalua si un flete es rentable.
                 </p>
               </div>
               <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -170,20 +214,21 @@ export default function CalcularFletePage() {
                     variant="outline"
                     className="gap-2"
                     onClick={() => setEditCostPerKm(costPerKm.toString())}
+                    disabled={isLoadingCostPerKm || !canEditCostPerKm}
                   >
                     <Settings className="h-4 w-4" />
-                    Costo/km: ${costPerKm.toFixed(2)}
+                    {isLoadingCostPerKm ? 'Cargando costo…' : `Costo/km: $${costPerKm.toFixed(2)}`}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Editar Costo por Kilómetro</DialogTitle>
+                    <DialogTitle>Editar Costo por Kilometro</DialogTitle>
                     <DialogDescription>
-                      Este valor se guardará y se usará para calcular si un flete conviene o no.
+                      Este valor compartido se guardará para toda la empresa y se usará para calcular si un flete conviene o no.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="py-4">
-                    <Label htmlFor="costPerKm">Costo por kilómetro ($)</Label>
+                    <Label htmlFor="costPerKm">Costo por kilometro ($)</Label>
                     <Input
                       id="costPerKm"
                       type="number"
@@ -191,29 +236,29 @@ export default function CalcularFletePage() {
                       value={editCostPerKm}
                       onChange={(e) => setEditCostPerKm(e.target.value)}
                       className="mt-2"
-                      placeholder="Ej: 125.50"
                     />
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+                    <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={isSavingCostPerKm}>
                       Cancelar
                     </Button>
-                    <Button onClick={saveCostPerKm}>Guardar</Button>
+                    <Button onClick={() => void saveCostPerKm()} disabled={isSavingCostPerKm}>
+                      {isSavingCostPerKm ? 'Guardando…' : 'Guardar'}
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
             </div>
           </div>
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* Izquierda: costos fijos → costo por km */}
             <Card className="border-border bg-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-foreground">
                   <Calculator className="h-5 w-5 text-primary" />
-                  Costos Fijos — Costo por Km
+                  Costos Fijos - Costo por Km
                 </CardTitle>
                 <CardDescription>
-                  Ingresá los costos fijos del negocio. Se dividen por {REFERENCE_KM.toLocaleString('es-AR')} km de referencia.
+                  Ingresa los costos fijos del negocio. Se dividen por {REFERENCE_KM.toLocaleString('es-AR')} km de referencia.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -223,9 +268,8 @@ export default function CalcularFletePage() {
                     <Input
                       id={field.id}
                       type="number"
-                      value={fixedCostInputs[field.id] || ''}
+                      value={fixedCostInputs[field.id]}
                       onChange={(e) => updateFixedCost(field.id, e.target.value)}
-                      placeholder={field.placeholder}
                     />
                   </div>
                 ))}
@@ -235,7 +279,7 @@ export default function CalcularFletePage() {
                 </Button>
                 {showCostResult && (
                   <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-4">
-                    <p className="text-sm text-muted-foreground">Costo por kilómetro calculado:</p>
+                    <p className="text-sm text-muted-foreground">Costo por kilometro calculado:</p>
                     <p className="text-3xl font-bold text-primary">${calculatedCostPerKm.toFixed(2)}</p>
                     <p className="mt-2 text-xs text-muted-foreground">
                       Suma de costos fijos ÷ {REFERENCE_KM.toLocaleString('es-AR')} km de referencia.
@@ -245,14 +289,14 @@ export default function CalcularFletePage() {
                       size="sm"
                       className="mt-3"
                       onClick={useCalculatedCost}
+                      disabled={isSavingCostPerKm || !canEditCostPerKm}
                     >
-                      Usar este valor como Costo/km
+                      {isSavingCostPerKm ? 'Guardando…' : 'Usar este valor como Costo/km'}
                     </Button>
                   </div>
                 )}
               </CardContent>
             </Card>
-            {/* Derecha: evaluación del flete */}
             <Card className="border-border bg-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-foreground">
@@ -260,13 +304,13 @@ export default function CalcularFletePage() {
                   ¿Conviene este Flete?
                 </CardTitle>
                 <CardDescription>
-                  Precio ofrecido, kilómetros, gasoil, peajes y porcentajes para ver si el viaje rinde.
+                  Precio ofrecido, kilometros, gasoil, peajes y porcentajes para ver si el viaje rinde.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {costPerKm === 0 && (
+                {costPerKm === 0 && !isLoadingCostPerKm && (
                   <div className="rounded-lg border border-warning/20 bg-warning/5 p-4 text-sm text-warning">
-                    ⚠️ No tenés configurado un costo por km. Calculalo primero a la izquierda o editá el valor manualmente.
+                    ⚠️ No tenes configurado un costo por km. Calculalo primero a la izquierda o editá el valor manualmente.
                   </div>
                 )}
                 {freightMainFields.map((field) => (
@@ -275,9 +319,8 @@ export default function CalcularFletePage() {
                     <Input
                       id={field.id}
                       type="number"
-                      value={freightInputs[field.id] || ''}
+                      value={freightInputs[field.id]}
                       onChange={(e) => updateFreightInput(field.id, e.target.value)}
-                      placeholder={field.placeholder}
                     />
                   </div>
                 ))}
@@ -288,9 +331,8 @@ export default function CalcularFletePage() {
                       <Input
                         id={field.id}
                         type="number"
-                        value={freightInputs[field.id] || ''}
+                        value={freightInputs[field.id]}
                         onChange={(e) => updateFreightInput(field.id, e.target.value)}
-                        placeholder={field.placeholder}
                       />
                     </div>
                   ))}
@@ -302,9 +344,8 @@ export default function CalcularFletePage() {
                       <Input
                         id={field.id}
                         type="number"
-                        value={freightInputs[field.id] || ''}
+                        value={freightInputs[field.id]}
                         onChange={(e) => updateFreightInput(field.id, e.target.value)}
-                        placeholder={field.placeholder}
                       />
                     </div>
                   ))}
@@ -313,6 +354,7 @@ export default function CalcularFletePage() {
                   <p className="text-sm text-muted-foreground">Costo por km actual:</p>
                   <p className="text-xl font-bold text-foreground">${costPerKm.toFixed(2)}</p>
                 </div>
+                {costPerKmError && <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{costPerKmError}</p>}
                 <Button
                   onClick={checkConvenience}
                   className="w-full"
@@ -322,8 +364,8 @@ export default function CalcularFletePage() {
                   Verificar si Conviene
                 </Button>
                 {showConvenienceResult &&
-                  freightInputs.freightPrice > 0 &&
-                  freightInputs.kilometers > 0 && (
+                  freightPrice > 0 &&
+                  kilometers > 0 && (
                     <div
                       className={`mt-4 rounded-lg border p-4 ${
                         isConvenient
@@ -340,13 +382,13 @@ export default function CalcularFletePage() {
                         <p
                           className={`text-lg font-bold ${isConvenient ? 'text-success' : 'text-destructive'}`}
                         >
-                          {isConvenient ? '¡Sí conviene!' : 'No conviene'}
+                          {isConvenient ? '¡Si conviene!' : 'No conviene'}
                         </p>
                       </div>
                       <div className="mt-4 space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">
-                            Costo base ({freightInputs.kilometers} km × ${costPerKm.toFixed(2)}):
+                            Costo base ({kilometers} km × ${costPerKm.toFixed(2)}):
                           </span>
                           <span className="font-medium text-foreground">
                             ${baseTripCost.toLocaleString('es-AR', { maximumFractionDigits: 2 })}
@@ -355,18 +397,18 @@ export default function CalcularFletePage() {
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">+ Gasoil:</span>
                           <span className="font-medium text-foreground">
-                            ${freightInputs.fuelCost.toLocaleString('es-AR')}
+                            ${fuelCost.toLocaleString('es-AR')}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">+ Peajes:</span>
                           <span className="font-medium text-foreground">
-                            ${freightInputs.tollCost.toLocaleString('es-AR')}
+                            ${tollCost.toLocaleString('es-AR')}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">
-                            + Chofer ({freightInputs.driverPercentage}%):
+                            + Chofer ({driverPercentage}%):
                           </span>
                           <span className="font-medium text-foreground">
                             ${(withDriver - baseBeforePercentages).toLocaleString('es-AR', { maximumFractionDigits: 2 })}
@@ -374,7 +416,7 @@ export default function CalcularFletePage() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">
-                            + Ganancia ({freightInputs.profitPercentage}%):
+                            + Ganancia ({profitPercentage}%):
                           </span>
                           <span className="font-medium text-foreground">
                             ${(totalCostForFreight - withDriver).toLocaleString('es-AR', { maximumFractionDigits: 2 })}
@@ -389,13 +431,13 @@ export default function CalcularFletePage() {
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Precio ofrecido:</span>
                           <span className="font-medium text-foreground">
-                            ${freightInputs.freightPrice.toLocaleString('es-AR')}
+                            ${freightPrice.toLocaleString('es-AR')}
                           </span>
                         </div>
                         <div className="border-t border-border pt-2">
                           <div className="flex justify-between">
                             <span className="font-medium text-muted-foreground">
-                              {isConvenient ? 'Ganancia:' : 'Pérdida:'}
+                              {isConvenient ? 'Ganancia:' : 'Perdida:'}
                             </span>
                             <span
                               className={`font-bold ${isConvenient ? 'text-success' : 'text-destructive'}`}

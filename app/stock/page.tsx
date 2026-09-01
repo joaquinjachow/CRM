@@ -1,7 +1,9 @@
 'use client'
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { PageShell } from '@/components/page-shell'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -47,7 +49,6 @@ export default function StockPage() {
               Consulta el inventario actual de productos
             </p>
           </div>
-
           {/* Stats rápidos */}
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Card className="border-border/50 bg-card">
@@ -84,7 +85,6 @@ export default function StockPage() {
               </CardContent>
             </Card>
           </div>
-
           {/* Filtros compactos */}
           <Card className="mb-6 border-border/50 bg-card">
             <CardContent className="space-y-3 p-4">
@@ -113,7 +113,6 @@ export default function StockPage() {
                   </SelectContent>
                 </Select>
               </div>
-
               {/* Tipo de madera chips */}
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -135,7 +134,6 @@ export default function StockPage() {
               </div>
             </CardContent>
           </Card>
-
           {/* Tabla de stock estilo Excel */}
           <Card className="border-border/50 bg-card">
             <CardHeader className="pb-3">
@@ -168,7 +166,19 @@ export default function StockPage() {
                       <tr>
                         <td colSpan={7} className="py-12 text-center">
                           <Warehouse className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
-                          <p className="text-muted-foreground">No se encontraron productos</p>
+                          <p className="text-muted-foreground">
+                            {stock.length === 0 ? 'Todavia no hay productos cargados' : 'No se encontraron productos'}
+                          </p>
+                          <p className="mt-1 text-sm text-muted-foreground/70">
+                            {stock.length === 0
+                              ? 'Registra un ingreso de mercaderia para comenzar a controlar el stock.'
+                              : 'Cambia o limpia los filtros para ver otros productos.'}
+                          </p>
+                          {stock.length === 0 && (
+                            <Button asChild size="sm" className="mt-4">
+                              <Link href="/ingreso-mercaderia">Registrar ingreso</Link>
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     ) : (

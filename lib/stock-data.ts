@@ -31,6 +31,14 @@ export interface Pedido {
   facturaId?: string
 }
 
+export interface Presupuesto {
+  id: string
+  fecha: string
+  cliente: string
+  items: PedidoItem[]
+  total: number
+}
+
 export interface IngresoItem {
   id: string
   codigo: number
