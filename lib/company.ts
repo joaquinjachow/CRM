@@ -1,6 +1,7 @@
 export const permissionGroups = [
   { key: 'dashboard', label: 'Inicio', permissions: ['dashboard:view'] },
   { key: 'freight', label: 'Calcular flete', permissions: ['freight:view', 'settings:manage'] },
+  { key: 'customers', label: 'Clientes', permissions: ['customers:view', 'customers:write'] },
   { key: 'stock', label: 'Stock e ingresos', permissions: ['stock:view', 'stock:write'] },
   { key: 'quotes', label: 'Presupuestos', permissions: ['quotes:view', 'quotes:write'] },
   { key: 'orders', label: 'Pedidos', permissions: ['orders:view', 'orders:write'] },
@@ -14,6 +15,8 @@ export const permissionLabels: Record<string, string> = {
   'dashboard:view': 'Ver',
   'freight:view': 'Usar',
   'settings:manage': 'Cambiar costo/km',
+  'customers:view': 'Ver',
+  'customers:write': 'Crear, editar y eliminar',
   'stock:view': 'Ver',
   'stock:write': 'Crear y editar',
   'quotes:view': 'Ver',
@@ -77,6 +80,8 @@ export function normalizePermissions(value: unknown): CompanyPermission[] {
 
 export function hasCompanyPermission(member: Pick<CompanyMember, 'role' | 'permissions'>, permission: CompanyPermission) {
   if (permission === 'users:manage') return member.role === 'owner'
+  if (permission === 'customers:view') return true
+  if (permission === 'customers:write') return member.role !== 'viewer' && (member.role !== 'custom' || member.permissions.includes(permission))
   return member.role === 'owner' || member.permissions.includes(permission)
 }
 

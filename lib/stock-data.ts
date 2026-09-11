@@ -10,6 +10,19 @@ export interface StockItem {
   precioLista: number
 }
 
+export interface Client {
+  id: string
+  nombre: string
+  apellido: string
+  empresa: string
+  direccion: string
+  banco: string
+  titularCuenta: string
+  cuit: string
+  cbu: string
+  alias: string
+}
+
 export interface PedidoItem {
   id: string
   stockItemId: string

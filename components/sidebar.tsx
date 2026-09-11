@@ -22,6 +22,7 @@ interface MenuItem {
 const menuActivo: MenuItem[] = [
   { icon: Home, label: 'Inicio', href: '/', permission: 'dashboard:view' },
   { icon: Calculator, label: 'Calcular Flete', href: '/calcular-flete', permission: 'freight:view' },
+  { icon: Users, label: 'Clientes', href: '/clientes', permission: 'customers:view' },
   { icon: Warehouse, label: 'Stock', href: '/stock', permission: 'stock:view' },
   { icon: FileSpreadsheet, label: 'Presupuestos', href: '/presupuestos', permission: 'quotes:view' },
   { icon: ClipboardList, label: 'Pedidos', href: '/pedidos', permission: 'orders:view' },
@@ -34,7 +35,6 @@ const menuActivo: MenuItem[] = [
 
 const menuPendiente: MenuItem[] = [
   { icon: Truck, label: 'Flota de Vehiculos', href: '#' },
-  { icon: Users, label: 'Clientes', href: '#' },
   { icon: Package, label: 'Envios', href: '#' },
   { icon: MapPin, label: 'Rutas', href: '#' },
   { icon: BarChart3, label: 'Reportes', href: '#' },
@@ -166,19 +166,19 @@ function SidebarContent() {
         </div>
         <ThemeToggle />
       </div>
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+      <nav className="sidebar-scroll flex-1 space-y-1 overflow-y-auto px-3 py-4">
         <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
           Operaciones
         </p>
-        {menuActivo.slice(0, 2).map(renderMenuItem)}
+        {menuActivo.slice(0, 3).map(renderMenuItem)}
         <p className="mb-2 mt-6 px-3 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
           Inventario
         </p>
-        {menuActivo.slice(2, 6).map(renderMenuItem)}
+        {menuActivo.slice(3, 7).map(renderMenuItem)}
         <p className="mb-2 mt-6 px-3 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
           Administracion
         </p>
-        {menuActivo.slice(6).map(renderMenuItem)}
+        {menuActivo.slice(7).map(renderMenuItem)}
         <div className="mt-6">
           <button
             onClick={() => setMasOpcionesAbierto(!masOpcionesAbierto)}

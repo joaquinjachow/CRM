@@ -1,7 +1,8 @@
-import type { Factura, IngresoMercaderia, Pedido, Presupuesto, StockItem } from './stock-data'
+import type { Client, Factura, IngresoMercaderia, Pedido, Presupuesto, StockItem } from './stock-data'
 import type { CashMovement, ChequeRecord, EquipmentAsset, EquipmentReminder, MonthlyPayment, MonthlyPaymentNotice } from './business-data'
 
 export interface CrmState {
+  clients: Client[]
   stock: StockItem[]
   pedidos: Pedido[]
   presupuestos: Presupuesto[]

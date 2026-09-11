@@ -13,6 +13,7 @@ interface PageShellProps {
 function permissionForPath(pathname: string): CompanyPermission | null {
   if (pathname === '/') return 'dashboard:view'
   if (pathname === '/calcular-flete') return 'freight:view'
+  if (pathname === '/clientes') return 'customers:view'
   if (pathname === '/stock' || pathname === '/ingreso-mercaderia') return 'stock:view'
   if (pathname === '/presupuestos') return 'quotes:view'
   if (pathname === '/pedidos') return 'orders:view'

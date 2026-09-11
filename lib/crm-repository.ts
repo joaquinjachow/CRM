@@ -4,9 +4,12 @@ import { getReminderState, type CashMovement, type ChequeRecord, type EquipmentA
 import { hasCompanyPermission, type CompanyMember, type CompanyPermission } from './company'
 import { getSupabaseAdmin } from './supabase'
 import type { CrmMutationResult, CrmState } from './crm-state'
-import type { Factura, IngresoItem, ItemFacturaLinea, PedidoItem, StockItem } from './stock-data'
+import type { Client, Factura, IngresoItem, ItemFacturaLinea, PedidoItem, StockItem } from './stock-data'
 
 export type MutationInput =
+  | { action: 'agregarCliente'; client: Omit<Client, 'id'> }
+  | { action: 'actualizarCliente'; id: string; client: Omit<Client, 'id'> }
+  | { action: 'eliminarCliente'; id: string }
   | { action: 'crearPedido'; cliente: string; items: Omit<PedidoItem, 'id'>[] }
   | { action: 'crearPresupuesto'; cliente: string; items: Omit<PedidoItem, 'id'>[] }
   | { action: 'crearIngreso'; proveedor: string; items: Omit<IngresoItem, 'id'>[] }
@@ -23,6 +26,9 @@ export type MutationInput =
   | { action: 'marcarAvisoPagoMensualPagado'; avisoId: string; periodo: string; monto: number }
 
 const mutationPermissions: Record<MutationInput['action'], CompanyPermission> = {
+  agregarCliente: 'customers:write',
+  actualizarCliente: 'customers:write',
+  eliminarCliente: 'customers:write',
   crearPedido: 'orders:write',
   crearPresupuesto: 'quotes:write',
   crearIngreso: 'stock:write',
@@ -40,6 +46,7 @@ const mutationPermissions: Record<MutationInput['action'], CompanyPermission> = 
 }
 
 const emptyState = (): CrmState => ({
+  clients: [],
   stock: [],
   pedidos: [],
   presupuestos: [],
@@ -55,6 +62,22 @@ const emptyState = (): CrmState => ({
 })
 
 export class CrmRepositoryError extends Error {}
+
+function normalizeClient(value: unknown): Omit<Client, 'id'> {
+  const input = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+  const text = (key: string, maxLength: number) => typeof input[key] === 'string' ? input[key].trim().slice(0, maxLength) : ''
+  return {
+    nombre: text('nombre', 120),
+    apellido: text('apellido', 120),
+    empresa: text('empresa', 160),
+    direccion: text('direccion', 240),
+    banco: text('banco', 120),
+    titularCuenta: text('titularCuenta', 160),
+    cuit: text('cuit', 32),
+    cbu: text('cbu', 32),
+    alias: text('alias', 120),
+  }
+}
 
 function dateToday() {
   return new Date().toISOString().slice(0, 10)
@@ -72,6 +95,7 @@ function nextDocumentId(records: { id: string }[], prefix: string) {
 function normalizeCrmState(value: unknown): CrmState {
   const state = value && typeof value === 'object' ? value as Partial<CrmState> : {}
   return {
+    clients: Array.isArray(state.clients) ? state.clients : [],
     stock: Array.isArray(state.stock) ? state.stock : [],
     pedidos: Array.isArray(state.pedidos) ? state.pedidos : [],
     presupuestos: Array.isArray(state.presupuestos) ? state.presupuestos : [],
@@ -120,6 +144,7 @@ export function getVisibleCrmState(state: CrmState, member: CompanyMember): CrmS
   const canSeeInvoices = can('billing:view') || can('orders:view')
 
   return {
+    clients: can('customers:view') ? state.clients : [],
     stock: canSeeStock ? state.stock : [],
     pedidos: canSeeOrders ? state.pedidos : [],
     presupuestos: can('quotes:view') ? state.presupuestos : [],
@@ -151,6 +176,23 @@ export async function mutateCrmState(companyId: string, input: MutationInput): P
   let createdId: string | undefined
 
   switch (input.action) {
+    case 'agregarCliente': {
+      const id = `client-${randomUUID()}`
+      state.clients.unshift({ id, ...normalizeClient(input.client) })
+      createdId = id
+      break
+    }
+    case 'actualizarCliente': {
+      const index = state.clients.findIndex((client) => client.id === input.id)
+      if (index < 0) throw new CrmRepositoryError('El cliente indicado no existe.')
+      state.clients[index] = { id: input.id, ...normalizeClient(input.client) }
+      break
+    }
+    case 'eliminarCliente': {
+      if (!state.clients.some((client) => client.id === input.id)) throw new CrmRepositoryError('El cliente indicado no existe.')
+      state.clients = state.clients.filter((client) => client.id !== input.id)
+      break
+    }
     case 'crearPedido': {
       if (!input.cliente.trim() || input.items.length === 0) throw new CrmRepositoryError('Completá cliente y productos del pedido.')
       for (const item of input.items) {
@@ -343,7 +385,6 @@ export async function mutateCrmState(companyId: string, input: MutationInput): P
       break
     }
   }
-
   await saveCrmState(companyId, state)
   return { state, createdId }
 }

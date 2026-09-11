@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic'
 const resourcePermissions: Record<string, CompanyPermission> = {
   dashboard: 'dashboard:view',
   freight: 'freight:view',
+  customers: 'customers:view',
   stock: 'stock:view',
   quotes: 'quotes:view',
   orders: 'orders:view',

@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { usePathname } from 'next/navigation'
 import { type CompanyPermission } from './company'
 import { useCompany } from './company-context'
-import { type StockItem, type Pedido, type PedidoItem, type Presupuesto, type IngresoMercaderia, type IngresoItem, type Factura, type ItemFacturaLinea } from './stock-data'
+import { type Client, type StockItem, type Pedido, type PedidoItem, type Presupuesto, type IngresoMercaderia, type IngresoItem, type Factura, type ItemFacturaLinea } from './stock-data'
 import { type EquipmentAsset, type EquipmentReminder, type CashMovement, type ChequeRecord, type MonthlyPayment, type MonthlyPaymentNotice, buildReminderPreviews, buildMonthlyPaymentPreviews, getMonthlyPaymentAlerts, type ReminderPreview, type MonthlyPaymentPreview } from './business-data'
 import type { CrmMutationResult, CrmState } from './crm-state'
 
@@ -11,6 +11,9 @@ interface StockContextType extends CrmState {
   upcomingReminders: ReminderPreview[]
   monthlyPaymentPreviews: MonthlyPaymentPreview[]
   upcomingMonthlyPaymentAlerts: MonthlyPaymentPreview[]
+  agregarCliente: (client: Omit<Client, 'id'>) => Promise<Client | null>
+  actualizarCliente: (id: string, client: Omit<Client, 'id'>) => Promise<boolean>
+  eliminarCliente: (id: string) => Promise<boolean>
   crearPedido: (cliente: string, items: Omit<PedidoItem, 'id'>[]) => Promise<Pedido | null>
   crearPresupuesto: (cliente: string, items: Omit<PedidoItem, 'id'>[]) => Promise<Presupuesto | null>
   crearIngreso: (proveedor: string, items: Omit<IngresoItem, 'id'>[]) => Promise<IngresoMercaderia | null>
@@ -32,6 +35,7 @@ interface StockContextType extends CrmState {
 const StockContext = createContext<StockContextType | null>(null)
 
 const emptyState: CrmState = {
+  clients: [],
   stock: [],
   pedidos: [],
   presupuestos: [],
@@ -49,6 +53,7 @@ const emptyState: CrmState = {
 function resourceForPath(pathname: string): { resource: string; permission: CompanyPermission } | null {
   if (pathname === '/') return { resource: 'dashboard', permission: 'dashboard:view' }
   if (pathname === '/calcular-flete') return { resource: 'freight', permission: 'freight:view' }
+  if (pathname === '/clientes') return { resource: 'customers', permission: 'customers:view' }
   if (pathname === '/stock' || pathname === '/ingreso-mercaderia') return { resource: 'stock', permission: 'stock:view' }
   if (pathname === '/presupuestos') return { resource: 'quotes', permission: 'quotes:view' }
   if (pathname === '/pedidos') return { resource: 'orders', permission: 'orders:view' }
@@ -111,6 +116,21 @@ export function StockProvider({ children }: { children: ReactNode }) {
   const crearPedido = useCallback(async (cliente: string, items: Omit<PedidoItem, 'id'>[]) => {
     const result = await runMutation({ action: 'crearPedido', cliente, items })
     return result?.state.pedidos.find((item) => item.id === result.createdId) ?? null
+  }, [runMutation])
+
+  const agregarCliente = useCallback(async (client: Omit<Client, 'id'>) => {
+    const result = await runMutation({ action: 'agregarCliente', client })
+    return result?.state.clients.find((item) => item.id === result.createdId) ?? null
+  }, [runMutation])
+
+  const actualizarCliente = useCallback(async (id: string, client: Omit<Client, 'id'>) => {
+    const result = await runMutation({ action: 'actualizarCliente', id, client })
+    return result !== null
+  }, [runMutation])
+
+  const eliminarCliente = useCallback(async (id: string) => {
+    const result = await runMutation({ action: 'eliminarCliente', id })
+    return result !== null
   }, [runMutation])
 
   const crearPresupuesto = useCallback(async (cliente: string, items: Omit<PedidoItem, 'id'>[]) => {
@@ -189,6 +209,9 @@ export function StockProvider({ children }: { children: ReactNode }) {
         upcomingReminders,
         monthlyPaymentPreviews,
         upcomingMonthlyPaymentAlerts,
+        agregarCliente,
+        actualizarCliente,
+        eliminarCliente,
         crearPedido,
         crearPresupuesto,
         crearIngreso,

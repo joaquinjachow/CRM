@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { CompanyRepositoryError, getCompanyContextForUser, inviteCompanyMember, listCompanyMembers, updateCompanyMemberAccess, updateCompanyName } from '@/lib/company-repository'
+import { CompanyRepositoryError, deleteCompanyMember, getCompanyContextForUser, inviteCompanyMember, listCompanyMembers, updateCompanyMemberAccess, updateCompanyName } from '@/lib/company-repository'
 import { hasCompanyPermission } from '@/lib/company'
 import { getAppUrl } from '@/lib/app-url'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
@@ -43,12 +43,15 @@ export async function POST(request: Request) {
     const context = await getCompanyContextForUser(user)
     const input = await request.json() as Record<string, unknown>
     const action = input.action
-    const redirectTo = getAppUrl('/auth/callback?next=/actualizar-contrasena').toString()
+    const redirectTo = getAppUrl('/auth/callback?next=/activar-invitacion').toString()
     if (action === 'invite') {
       return NextResponse.json({ members: await inviteCompanyMember(context, { email: input.email, role: input.role, permissions: input.permissions, redirectTo }) })
     }
     if (action === 'updateMember') {
       return NextResponse.json({ members: await updateCompanyMemberAccess(context, { userId: input.userId, role: input.role, permissions: input.permissions }) })
+    }
+    if (action === 'deleteMember') {
+      return NextResponse.json({ members: await deleteCompanyMember(context, input.userId) })
     }
     if (action === 'updateCompanyName') {
       return NextResponse.json({ company: await updateCompanyName(context, input.name) })

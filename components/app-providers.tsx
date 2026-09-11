@@ -6,7 +6,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { CompanyProvider } from '@/lib/company-context'
 import { StockProvider } from '@/lib/stock-context'
 
-const authPaths = new Set(['/login', '/registrarse', '/olvidar-contrasena', '/actualizar-contrasena'])
+const authPaths = new Set(['/login', '/registrarse', '/olvidar-contrasena', '/actualizar-contrasena', '/activar-invitacion'])
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()

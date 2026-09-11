@@ -180,6 +180,20 @@ export async function updateCompanyMemberAccess(context: CompanyContextValue, in
   return listCompanyMembers(context.company.id)
 }
 
+export async function deleteCompanyMember(context: CompanyContextValue, userId: unknown) {
+  assertCanManageUsers(context)
+  const memberId = typeof userId === 'string' ? userId : ''
+  if (!memberId) throw new CompanyRepositoryError('Indicá el usuario que querés eliminar.')
+  const members = await listCompanyMembers(context.company.id)
+  const target = members.find((member) => member.userId === memberId)
+  if (!target) throw new CompanyRepositoryError('El usuario no pertenece a esta empresa.')
+  if (target.role === 'owner') throw new CompanyRepositoryError('El propietario no se puede eliminar desde este panel.')
+
+  const { error } = await getSupabaseAdmin().auth.admin.deleteUser(memberId)
+  if (error) throw new CompanyRepositoryError(`No se pudo eliminar el usuario: ${error.message}`)
+  return listCompanyMembers(context.company.id)
+}
+
 export async function updateCompanyName(context: CompanyContextValue, value: unknown) {
   if (context.member.role !== 'owner') throw new CompanyRepositoryError('Sólo el propietario puede cambiar el nombre de la empresa.')
   const name = typeof value === 'string' ? value.trim().slice(0, 120) : ''

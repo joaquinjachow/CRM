@@ -5,12 +5,13 @@ import { PageShell } from '@/components/page-shell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { defaultPermissionsByRole, permissionGroups, permissionLabels, roleLabel, type CompanyMember, type CompanyPermission, type CompanyRole } from '@/lib/company'
 import { useCompany } from '@/lib/company-context'
-import { Check, Crown, Eye, ShieldCheck, SlidersHorizontal, UserPlus, Users, Wrench } from 'lucide-react'
+import { Check, Crown, Eye, ShieldCheck, SlidersHorizontal, Trash2, UserPlus, Users, Wrench } from 'lucide-react'
 
 type EditableRole = Exclude<CompanyRole, 'owner'>
 
@@ -133,6 +134,8 @@ function MemberAccess({ member, onSaved }: { member: CompanyMember; onSaved: (me
   const [role, setRole] = useState<EditableRole>(member.role === 'owner' ? 'admin' : member.role)
   const [permissions, setPermissions] = useState<CompanyPermission[]>(member.permissions)
   const [saving, setSaving] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -165,6 +168,25 @@ function MemberAccess({ member, onSaved }: { member: CompanyMember; onSaved: (me
     }
   }
 
+  async function remove() {
+    setDeleting(true)
+    setError('')
+    try {
+      const response = await fetch('/api/company', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'deleteMember', userId: member.userId }),
+      })
+      const body = await response.json() as { members?: CompanyMember[]; error?: string }
+      if (!response.ok || !body.members) throw new Error(body.error || 'No se pudo eliminar el usuario.')
+      onSaved(body.members)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'No se pudo eliminar el usuario.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   if (member.role === 'owner') {
     return <Badge>Propietario de la empresa</Badge>
   }
@@ -177,9 +199,25 @@ function MemberAccess({ member, onSaved }: { member: CompanyMember; onSaved: (me
       </div>
       {role === 'custom' && <PermissionEditor permissions={permissions} onChange={setPermissions} disabled={saving} />}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      <Button size="sm" variant="outline" onClick={() => void save()} disabled={saving}>
-        {saving ? 'Guardando…' : 'Guardar acceso'}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" onClick={() => void save()} disabled={saving || deleting}>
+          {saving ? 'Guardando…' : 'Guardar acceso'}
+        </Button>
+        <Button size="sm" variant="destructive" onClick={() => setDeleteDialogOpen(true)} disabled={saving || deleting}>
+          <Trash2 className="h-4 w-4" />{deleting ? 'Eliminando…' : 'Eliminar usuario'}
+        </Button>
+      </div>
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteDialogOpen(false)
+        }}
+        title="Eliminar usuario"
+        description={`Vas a eliminar la cuenta de ${member.email}. Perderá el acceso y luego podrás invitarla de nuevo con ese correo.`}
+        confirmLabel="Eliminar usuario"
+        loading={deleting}
+        onConfirm={() => void remove()}
+      />
     </div>
   )
 }
@@ -261,7 +299,6 @@ export default function UsersPage() {
         </div>
         <Badge variant="outline" className="gap-2 px-3 py-1.5"><ShieldCheck className="h-4 w-4" />Empresa única</Badge>
       </div>
-
       {loading ? (
         <Card><CardContent className="py-10 text-sm text-muted-foreground">Cargando empresa y usuarios…</CardContent></Card>
       ) : !canManageUsers ? (
@@ -312,7 +349,6 @@ export default function UsersPage() {
                 </form>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-primary" />Personas con acceso</CardTitle>
