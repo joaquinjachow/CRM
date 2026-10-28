@@ -23,7 +23,6 @@ export default function RegisterPage() {
     event.preventDefault()
     setError('')
     setMessage('')
-
     if (password.length < 8) {
       setError('La contraseña debe tener al menos 8 caracteres.')
       return
@@ -32,7 +31,6 @@ export default function RegisterPage() {
       setError('Las contraseñas no coinciden.')
       return
     }
-
     setLoading(true)
     const emailRedirectTo = getAppUrl('/auth/callback')
     emailRedirectTo.searchParams.set('next', '/')
@@ -44,19 +42,16 @@ export default function RegisterPage() {
         data: { company_name: companyName.trim() },
       },
     })
-
     if (signUpError) {
       setError(signUpError.message)
       setLoading(false)
       return
     }
-
     if (data.session) {
       router.replace('/')
       router.refresh()
       return
     }
-
     setMessage('Te enviamos un correo para confirmar tu cuenta. Abrilo y después vas a poder ingresar al CRM.')
     setLoading(false)
   }

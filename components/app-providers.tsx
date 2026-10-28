@@ -1,5 +1,4 @@
 'use client'
-
 import { usePathname } from 'next/navigation'
 import { BusinessAlerts } from '@/components/business-alerts'
 import { ThemeProvider } from '@/components/theme-provider'

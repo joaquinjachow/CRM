@@ -6,7 +6,6 @@ import { formatDate, formatMoney, type Presupuesto } from './stock-data'
 const BRAND_COLOR = [142, 27, 35] as const
 const BRAND_LIGHT_COLOR = [250, 239, 239] as const
 const PAGE_WIDTH = 210
-const PAGE_HEIGHT = 297
 const HORIZONTAL_MARGIN = 14
 
 function cargarLogo(): Promise<string | null> {
