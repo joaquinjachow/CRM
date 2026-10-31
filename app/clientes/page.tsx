@@ -132,7 +132,7 @@ export default function ClientsPage() {
         <CardContent className="px-0 pb-0">
           {error && <p role="alert" className="mx-6 mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1400px] border-collapse text-sm">
+            <table className="w-full min-w-350 border-collapse text-sm">
               <thead>
                 <tr className="border-y border-border bg-muted/40 text-left">
                   <th className="border-x border-border px-3 py-2.5 font-semibold text-muted-foreground">Nombre</th>
