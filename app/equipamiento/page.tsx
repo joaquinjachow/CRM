@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { PageShell } from '@/components/page-shell'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { ShieldCheck, Truck, Clock3, AlertTriangle, CirclePlus, ClipboardList } from 'lucide-react'
 import { useStock } from '@/lib/stock-context'
-import { assetCategoryLabel, formatBusinessDate, formatBusinessMoney, reminderTypeLabel, type AssetCategory, type ReminderType } from '@/lib/business-data'
+import { assetCategoryLabel, formatBusinessDate, reminderTypeLabel, type AssetCategory, type ReminderType } from '@/lib/business-data'
 
 const defaultAsset = {
   nombre: '',
@@ -31,19 +31,11 @@ const defaultReminder = {
 }
 
 export default function EquipamientoPage() {
-  const { equipment, reminders, upcomingReminders, agregarEquipo, agregarRecordatorio } = useStock()
+  const { equipment, upcomingReminders, agregarEquipo, agregarRecordatorio } = useStock()
   const [assetForm, setAssetForm] = useState(defaultAsset)
   const [reminderForm, setReminderForm] = useState(defaultReminder)
 
-  const activosPorCategoria = useMemo(() => {
-    return equipment.reduce<Record<string, number>>((acc, item) => {
-      acc[item.categoria] = (acc[item.categoria] ?? 0) + 1
-      return acc
-    }, {})
-  }, [equipment])
-
   const activosOperativos = equipment.filter((item) => item.estado === 'operativo').length
-  const activosConAlerta = equipment.filter((item) => item.estado === 'alerta').length
   const vencidos = upcomingReminders.filter((item) => item.estado === 'vencido').length
   const proximos = upcomingReminders.filter((item) => item.estado === 'proximo').length
 
